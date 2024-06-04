@@ -2,7 +2,7 @@ from model import MusicTransformerDecoder
 from custom.layers import *
 from custom import callback
 import params as par
-from tensorflow.python.keras.optimizer_v2.adam import Adam
+from tensorflow.keras.optimizers import Adam
 from data import Data
 import utils
 import argparse
@@ -41,7 +41,7 @@ num_layer = args.num_layers
 
 
 # load data
-dataset = Data("/content/MusicTransformer/dataset/preprocessed_midi")
+dataset = Data("/content/MusicTransformerBeethoven/dataset/preprocessed_midi")
 print(dataset)
 
 

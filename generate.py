@@ -2,7 +2,7 @@ from model import MusicTransformer, MusicTransformerDecoder
 from custom.layers import *
 from custom import callback
 import params as par
-from tensorflow.python.keras.optimizer_v2.adam import Adam
+from tensorflow.keras.optimizers import Adam
 from data import Data
 import utils
 import datetime
@@ -17,7 +17,7 @@ parser.add_argument('--load_path', default="result/dec0722", help='모델 로드
 parser.add_argument('--mode', default='dec')
 parser.add_argument('--beam', default=None, type=int)
 parser.add_argument('--length', default=2048, type=int)
-parser.add_argument('--save_path', default='bin/generated.mid', type=str)
+parser.add_argument('--save_path', default='/content/generated.mid', type=str)
 
 
 args = parser.parse_args()
@@ -50,7 +50,7 @@ else:
     print(">> generate with decoder wise... beam size is {}".format(beam))
     mt = MusicTransformerDecoder(loader_path=load_path)
 
-inputs = encode_midi('content/MusicTransformerBeethoven/dataset/midi/{nom du fichier de depart}.mid') #remplacer par le nom du fichier de départ
+inputs = encode_midi('/content/MusicTransformerBeethoven/dataset/midi_Beethoven/sonate_32_chisamori.mid') #remplacer par le nom du fichier de départ
 
 
 with gen_summary_writer.as_default():

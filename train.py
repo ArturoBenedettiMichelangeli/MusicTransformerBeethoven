@@ -41,7 +41,7 @@ num_layer = args.num_layers
 
 
 # load data
-dataset = Data("/content/MusicTransformerBeethoven/dataset/preprocessed_midi")
+dataset = Data(pickle_dir)
 print(dataset)
 
 
@@ -79,7 +79,7 @@ for e in range(epochs):
         except:
             continue
         result_metrics = mt.train_on_batch(batch_x, batch_y)
-        if b % 100 == 0:
+        if b % 100 == 0: #un rapport tous les 100 batchs (pas assez frequent si on n'a que 329//2 = 164 donnees)
             eval_x, eval_y = dataset.slide_seq2seq_batch(batch_size, max_seq, 'eval')
             eval_result_metrics, weights = mt.evaluate(eval_x, eval_y)
             mt.save(save_path)

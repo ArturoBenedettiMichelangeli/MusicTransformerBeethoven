@@ -16,7 +16,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--l_r', default=None, help='학습률', type=float)
 parser.add_argument('--batch_size', default=2, help='batch size', type=int)
 parser.add_argument('--pickle_dir', default='music', help='데이터셋 경로')
-parser.add_argument('--max_seq', default=2048, help='최대 길이', type=int)
+parser.add_argument('--max_seq', default=2048, help='longueur maximale', type=int)
 parser.add_argument('--epochs', default=100, help='에폭 수', type=int)
 parser.add_argument('--load_path', default=None, help='모델 로드 경로', type=str)
 parser.add_argument('--save_path', default="result/dec0722", help='모델 저장 경로')
@@ -79,7 +79,7 @@ for e in range(epochs):
         except:
             continue
         result_metrics = mt.train_on_batch(batch_x, batch_y)
-        if b % 100 == 0: #un rapport tous les 100 batchs (pas assez frequent si on n'a que 329//2 = 164 donnees)
+        if b % 10 == 0: #un rapport tous les 100 batchs (pas assez frequent si on n'a que 329//2 = 164 donnees)
             eval_x, eval_y = dataset.slide_seq2seq_batch(batch_size, max_seq, 'eval')
             eval_result_metrics, weights = mt.evaluate(eval_x, eval_y)
             mt.save(save_path)

@@ -294,6 +294,34 @@ class MusicTransformerDecoder(keras.Model):
         else:
             return tf.nn.softmax(fc)
 
+    # def train_on_batch(self, x, y=None, sample_weight=None, class_weight=None, reset_metrics=True):
+    #     if self._debug:
+    #         tf.print('sanity:\n', self.sanity_check(x, y, mode='d'), output_stream=sys.stdout)
+
+    #     x, y = self.__prepare_train_data(x, y)
+
+    #     _, _, look_ahead_mask = utils.get_masked_with_pad_tensor(self.max_seq, x, x)
+
+    #     if self.dist:
+    #         predictions = self.__dist_train_step(
+    #             x, y, look_ahead_mask, True)
+    #     else:
+    #         predictions = self.__train_step(x, y, look_ahead_mask, True)
+
+    #     if self._debug:
+    #         print('train step finished')
+    #     result_metric = []
+
+    #     if self.dist:
+    #         loss = self._distribution_strategy.reduce(tf.distribute.ReduceOp.MEAN, self.loss_value, None)
+    #     else:
+    #         loss = tf.reduce_mean(self.loss_value)
+    #     loss = tf.reduce_mean(loss)
+    #     for metric in self.custom_metrics:
+    #         result_metric.append(metric(y, predictions).numpy())
+
+    #     return [loss.numpy()]+result_metric
+
     def train_on_batch(self, x, y=None, sample_weight=None, class_weight=None, reset_metrics=True):
         if self._debug:
             tf.print('sanity:\n', self.sanity_check(x, y, mode='d'), output_stream=sys.stdout)
@@ -310,13 +338,16 @@ class MusicTransformerDecoder(keras.Model):
 
         if self._debug:
             print('train step finished')
-        result_metric = []
 
-        if self.dist:
-            loss = self._distribution_strategy.reduce(tf.distribute.ReduceOp.MEAN, self.loss_value, None)
+        # Calcul de la perte avec les poids d'échantillon si fournis
+        if sample_weight is not None:
+            weighted_losses = self.loss_value * sample_weight[:, tf.newaxis]  # Assurez-vous que sample_weight a la bonne forme
+            loss = tf.reduce_mean(weighted_losses)
         else:
             loss = tf.reduce_mean(self.loss_value)
-        loss = tf.reduce_mean(loss)
+
+        result_metric = []
+
         for metric in self.custom_metrics:
             result_metric.append(metric(y, predictions).numpy())
 
@@ -518,11 +549,11 @@ if __name__ == '__main__':
     print(lookup_mask)
     print(src_mask)
     mt = MusicTransformer(debug=True, embedding_dim=par.embedding_dim, vocab_size=par.vocab_size)
-    mt.save_weights('my_model.h5', save_format='h5')
-    mt.load_weights('my_model.h5')
+    mt.save_weights('my_model.weights.h5')
+    mt.load_weights('my_model.weights.h5')
     result = mt.generate([27, 186,  43, 213, 115, 131], length=100)
     print(result)
-    from deprecated import sequence
+    import sequence
 
     sequence.EventSeq.from_array(result[0]).to_note_seq().to_midi_file('result.midi')
     pass

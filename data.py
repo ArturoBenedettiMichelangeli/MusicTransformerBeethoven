@@ -16,6 +16,9 @@ class Data:
         }
         self._seq_file_name_idx = 0
         self._seq_idx = 0
+        #-----Poids des fichiers midi
+        self.sample_weights = [] #liste des poids pour chaque fichier midi
+        #-----
         pass
 
     def __repr__(self):
@@ -29,7 +32,7 @@ class Data:
             self._get_seq(file, length)
             for file in batch_files
         ]
-        return np.array(batch_data)  # batch_size, seq_len
+        return np.array(batch_data), batch_files  # batch_size, seq_len
 
     def seq2seq_batch(self, batch_size, length, mode='train'):
         data = self.batch(batch_size, length * 2, mode)
@@ -43,12 +46,25 @@ class Data:
         y = data[:, length//100:length//100+length]
         return x, y
 
+    # def slide_seq2seq_batch(self, batch_size, length, mode='train'):
+    #     data = self.batch(batch_size, length+1, mode)
+    #     x = data[:, :-1]
+    #     y = data[:, 1:]
+    #     return x, y
+
     def slide_seq2seq_batch(self, batch_size, length, mode='train'):
-        data = self.batch(batch_size, length+1, mode)
+        data, batch_files = self.batch(batch_size, length+1, mode)
         x = data[:, :-1]
         y = data[:, 1:]
-        return x, y
-
+        
+        # Créer un dictionnaire pour faire correspondre chaque fichier à son poids d'échantillon
+        file_to_weight = {file: self.sample_weights[self.files.index(file)] for file in self.files}
+        
+        # Utiliser ce dictionnaire pour récupérer les poids d'échantillon pour les fichiers dans le batch actuel
+        sample_weights_batch = np.array([file_to_weight[file] for file in batch_files])
+        
+        return x, y, sample_weights_batch
+    
     def random_sequential_batch(self, batch_size, length):
         batch_files = random.sample(self.files, k=batch_size)
         batch_data = []

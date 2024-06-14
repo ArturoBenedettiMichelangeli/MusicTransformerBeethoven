@@ -75,11 +75,15 @@ for e in range(epochs):
     mt.reset_metrics()
     for b in range(len(dataset.files) // batch_size):
         try:
-            batch_x, batch_y = dataset.slide_seq2seq_batch(batch_size, max_seq)
+            # batch_x, batch_y = dataset.slide_seq2seq_batch(batch_size, max_seq)
+            batch_x, batch_y, sample_weights_batch = dataset.slide_seq2seq_batch(batch_size, max_seq)
+
         except:
             continue
-        result_metrics = mt.train_on_batch(batch_x, batch_y)
-        if b % 10 == 0: #un rapport tous les 100 batchs (pas assez frequent si on n'a que 329//2 = 164 donnees)
+        # result_metrics = mt.train_on_batch(batch_x, batch_y)
+        result_metrics = mt.train_on_batch(batch_x, batch_y, sample_weight=sample_weights_batch)
+
+        if b % 50 == 0: #un rapport tous les 50 batchs (à ajuster en fonction du nombre de données)
             eval_x, eval_y = dataset.slide_seq2seq_batch(batch_size, max_seq, 'eval')
             eval_result_metrics, weights = mt.evaluate(eval_x, eval_y)
             mt.save(save_path)

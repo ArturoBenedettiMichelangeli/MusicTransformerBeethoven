@@ -84,8 +84,11 @@ for e in range(epochs):
         result_metrics = mt.train_on_batch(batch_x, batch_y, sample_weight=sample_weights_batch)
 
         if b % 50 == 0: #un rapport tous les 50 batchs (à ajuster en fonction du nombre de données)
-            eval_x, eval_y = dataset.slide_seq2seq_batch(batch_size, max_seq, 'eval')
-            eval_result_metrics, weights = mt.evaluate(eval_x, eval_y)
+            # eval_x, eval_y = dataset.slide_seq2seq_batch(batch_size, max_seq, 'eval')
+            # eval_result_metrics, weights = mt.evaluate(eval_x, eval_y)
+            eval_x, eval_y, eval_sample_weights = dataset.slide_seq2seq_batch(batch_size, max_seq, 'eval')
+            eval_result_metrics, weights = mt.evaluate(eval_x, eval_y, sample_weight=eval_sample_weights)
+
             mt.save(save_path)
             with train_summary_writer.as_default():
                 if b == 0:

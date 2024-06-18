@@ -387,7 +387,7 @@ class MusicTransformerDecoder(keras.Model):
     def evaluate(self, x=None, y=None, batch_size=None, verbose=1, sample_weight=None, steps=None, callbacks=None, 
                  max_queue_size=10, workers=1, use_multiprocessing=False):
         
-        _, _, look_ahead_mask = utils.get_masked_with_pad_tensor(self.max_seq, x)
+        _, _, look_ahead_mask = utils.get_masked_with_pad_tensor(self.max_seq, x, x)
         predictions, w = self.call(x, lookup_mask=look_ahead_mask, training=False, eval=True)
 
         if sample_weight is not None:

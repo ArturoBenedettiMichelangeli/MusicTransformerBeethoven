@@ -92,7 +92,8 @@ for e in range(epochs):
                     tf.summary.histogram("source_analysis", batch_x, step=e)
 
                 tf.summary.scalar('loss', result_metrics[0], step=idx)
-                tf.summary.scalar('accuracy', result_metrics[1], step=idx)
+                tf.summary.scalar('perplexity', result_metrics[1], step=idx)
+                tf.summary.scalar('accuracy', result_metrics[2], step=idx)
 
             with eval_summary_writer.as_default():
                 if b == 0:
@@ -101,10 +102,10 @@ for e in range(epochs):
                 tf.summary.scalar('loss', eval_result_metrics[0], step=idx)
                 tf.summary.scalar('perplexity', eval_result_metrics[1], step=idx)
                 tf.summary.scalar('accuracy', eval_result_metrics[2], step=idx)
-                for i, weight in enumerate(weights):
-                    with tf.name_scope("layer_%d" % i):
-                        with tf.name_scope("w"):
-                            utils.attention_image_summary(weight, step=idx)
+                # for i, weight in enumerate(weights):
+                #     with tf.name_scope("layer_%d" % i):
+                #         with tf.name_scope("w"):
+                #             utils.attention_image_summary(weight, step=idx)
 
             idx += 1
             print('\n====================================================')

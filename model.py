@@ -339,19 +339,25 @@ class MusicTransformerDecoder(keras.Model):
         if self._debug:
             print('train step finished')
 
-        # Calcul de la perte avec les poids d'échantillon si fournis
+        # Calculating perplexity
+        cross_entropy = self.loss_value
+        perplexity = tf.exp(tf.reduce_mean(cross_entropy))  # Compute mean perplexity over batch
+
+        # Calculating the loss with sample weights if provided
         if sample_weight is not None:
-            weighted_losses = self.loss_value * sample_weight[:, tf.newaxis]
+            weighted_losses = cross_entropy * sample_weight[:, tf.newaxis]
             loss = tf.reduce_mean(weighted_losses)
         else:
-            loss = tf.reduce_mean(self.loss_value)
+            loss = tf.reduce_mean(cross_entropy)
 
         result_metric = []
 
         for metric in self.custom_metrics:
             result_metric.append(metric(y, predictions).numpy())
 
-        return [loss.numpy()]+result_metric
+        return [loss.numpy(), perplexity.numpy()]+result_metric
+
+
 
     # @tf.function
     def __dist_train_step(self, inp_tar, out_tar, lookup_mask, training):

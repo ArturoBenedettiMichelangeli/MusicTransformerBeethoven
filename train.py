@@ -75,17 +75,13 @@ for e in range(epochs):
     mt.reset_metrics()
     for b in range(len(dataset.files) // batch_size):
         try:
-            # batch_x, batch_y = dataset.slide_seq2seq_batch(batch_size, max_seq)
             batch_x, batch_y, sample_weights_batch = dataset.slide_seq2seq_batch(batch_size, max_seq)
-
         except:
             continue
-        # result_metrics = mt.train_on_batch(batch_x, batch_y)
+
         result_metrics = mt.train_on_batch(batch_x, batch_y, sample_weight=sample_weights_batch)
 
-        if b % 50 == 0: #un rapport tous les 50 batchs (à ajuster en fonction du nombre de données)
-            # eval_x, eval_y = dataset.slide_seq2seq_batch(batch_size, max_seq, 'eval')
-            # eval_result_metrics, weights = mt.evaluate(eval_x, eval_y)
+        if b % 50 == 0:  # Report every 50 batches (adjust as needed)
             eval_x, eval_y, eval_sample_weights = dataset.slide_seq2seq_batch(batch_size, max_seq, 'eval')
             eval_result_metrics, weights = mt.evaluate(eval_x, eval_y, sample_weight=eval_sample_weights)
 
@@ -103,21 +99,15 @@ for e in range(epochs):
                     mt.sanity_check(eval_x, eval_y, step=e)
 
                 tf.summary.scalar('loss', eval_result_metrics[0], step=idx)
-                tf.summary.scalar('accuracy', eval_result_metrics[1], step=idx)
+                tf.summary.scalar('perplexity', eval_result_metrics[1], step=idx)
+                tf.summary.scalar('accuracy', eval_result_metrics[2], step=idx)
                 for i, weight in enumerate(weights):
                     with tf.name_scope("layer_%d" % i):
                         with tf.name_scope("w"):
                             utils.attention_image_summary(weight, step=idx)
-                # for i, weight in enumerate(weights):
-                #     with tf.name_scope("layer_%d" % i):
-                #         with tf.name_scope("_w0"):
-                #             utils.attention_image_summary(weight[0])
-                #         with tf.name_scope("_w1"):
-                #             utils.attention_image_summary(weight[1])
+
             idx += 1
             print('\n====================================================')
             print('Epoch/Batch: {}/{}'.format(e, b))
-            print('Train >>>> Loss: {:6.6}, Accuracy: {}'.format(result_metrics[0], result_metrics[1]))
-            print('Eval >>>> Loss: {:6.6}, Accuracy: {}'.format(eval_result_metrics[0], eval_result_metrics[1]))
-
-
+            print('Train >>>> Loss: {:6.6}, Perplexity: {:6.6}, Accuracy: {}'.format(result_metrics[0], result_metrics[1], result_metrics[2]))
+            print('Eval >>>> Loss: {:6.6}, Perplexity: {:6.6}, Accuracy: {}'.format(eval_result_metrics[0], eval_result_metrics[1], eval_result_metrics[2]))

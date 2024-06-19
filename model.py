@@ -341,7 +341,7 @@ class MusicTransformerDecoder(keras.Model):
 
         # Calcul de la perte avec les poids d'échantillon si fournis
         if sample_weight is not None:
-            weighted_losses = self.loss_value * sample_weight[:, tf.newaxis]  # Assurez-vous que sample_weight a la bonne forme
+            weighted_losses = self.loss_value * sample_weight[:, tf.newaxis]
             loss = tf.reduce_mean(weighted_losses)
         else:
             loss = tf.reduce_mean(self.loss_value)
@@ -396,11 +396,14 @@ class MusicTransformerDecoder(keras.Model):
         else:
             loss = tf.reduce_mean(self.loss(y, predictions))
 
+        # Perplexity
+        perplexity = tf.exp(loss)
+
         result_metrics = []
         for metric in self.custom_metrics:
             result_metrics.append(metric(y, tf.nn.softmax(predictions)).numpy())
 
-        return [loss.numpy()] + result_metrics, w
+        return [loss.numpy()] + [perplexity.numpy()] + result_metrics, w
 
 
     def save(self, filepath, overwrite=True, include_optimizer=False, save_format=None):

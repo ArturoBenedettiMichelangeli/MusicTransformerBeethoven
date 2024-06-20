@@ -69,6 +69,13 @@ train_summary_writer = tf.summary.create_file_writer(train_log_dir)
 eval_summary_writer = tf.summary.create_file_writer(eval_log_dir)
 
 
+#define frequency of reports based on the dataset size
+if pickle_dir=="/content/MusicTransformerBeethoven/dataset/preprocessed_midi": #general (and big) dataset
+    freq = 50
+else: #specific (and small) dataset
+    freq = 10
+
+
 # Train Start
 idx = 0
 for e in range(epochs):
@@ -81,7 +88,7 @@ for e in range(epochs):
 
         result_metrics = mt.train_on_batch(batch_x, batch_y, sample_weight=sample_weights_batch)
 
-        if b % 50 == 0:  # Report every 50 batches (adjust as needed)
+        if b % freq == 0:
             eval_x, eval_y, eval_sample_weights = dataset.slide_seq2seq_batch(batch_size, max_seq, 'eval')
             eval_result_metrics, weights = mt.evaluate(eval_x, eval_y, sample_weight=eval_sample_weights)
 

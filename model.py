@@ -391,25 +391,27 @@ class MusicTransformerDecoder(keras.Model):
     #     return [loss.numpy()] + result_metric, w
     
     def evaluate(self, x=None, y=None, batch_size=None, verbose=1, sample_weight=None, steps=None, callbacks=None, 
-                 max_queue_size=10, workers=1, use_multiprocessing=False):
+                max_queue_size=10, workers=1, use_multiprocessing=False):
         
         _, _, look_ahead_mask = utils.get_masked_with_pad_tensor(self.max_seq, x, x)
         predictions, w = self.call(x, lookup_mask=look_ahead_mask, training=False, eval=True)
 
+        cross_entropy = self.loss(y, predictions)
+        
+        perplexity = tf.exp(tf.reduce_mean(cross_entropy))
+
         if sample_weight is not None:
-            weighted_losses = self.loss(y, predictions) * sample_weight[:, tf.newaxis]
+            weighted_losses = cross_entropy * sample_weight[:, tf.newaxis]
             loss = tf.reduce_mean(weighted_losses)
         else:
-            loss = tf.reduce_mean(self.loss(y, predictions))
-
-        # Perplexity
-        perplexity = tf.exp(loss)
+            loss = tf.reduce_mean(cross_entropy)
 
         result_metrics = []
         for metric in self.custom_metrics:
             result_metrics.append(metric(y, tf.nn.softmax(predictions)).numpy())
 
         return [loss.numpy()] + [perplexity.numpy()] + result_metrics, w
+
 
 
     def save(self, filepath, overwrite=True, include_optimizer=False, save_format=None):

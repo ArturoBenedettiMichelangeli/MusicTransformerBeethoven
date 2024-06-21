@@ -69,9 +69,9 @@ def transformer_dist_train_loss(y_true, y_pred):
 
 #         return tf.math.rsqrt(self.d_model) * tf.math.minimum(arg1, arg2)
 
-#Adapted to use Cosine Annealing
+#Adapted to use Cosine Annealing (does not depend on the embedding dimension anymore)
 class CustomSchedule(tf.keras.optimizers.schedules.LearningRateSchedule):
-    def __init__(self, initial_learning_rate, decay_steps, alpha=0.0, name='CosineDecay', warmup_steps=0):
+    def __init__(self, initial_learning_rate, decay_steps, alpha=0.0, name='CosineDecay', warmup_steps=4000):
         super(CustomSchedule, self).__init__()
 
         self.initial_learning_rate = initial_learning_rate

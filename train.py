@@ -46,7 +46,17 @@ print(dataset)
 
 
 # load model
-learning_rate = callback.CustomSchedule(par.embedding_dim) if l_r is None else l_r
+initial_learning_rate = l_r
+decay_steps = (len(dataset.files) // batch_size) * epochs
+alpha = 0.01 #fraction de initial_learning_rate qui représente le taux d'apprentissage minimum à la fin de la décroissance. Par exemple, si alpha=0.1 et initial_learning_rate=0.01, le taux d'apprentissage final sera 0.001.
+#à modifier en fonction des résultats
+
+# Load model
+learning_rate = callback.CustomSchedule(
+    initial_learning_rate=initial_learning_rate,
+    decay_steps=decay_steps,
+    alpha=alpha
+)
 opt = Adam(learning_rate, beta_1=0.9, beta_2=0.98, epsilon=1e-9)
 
 

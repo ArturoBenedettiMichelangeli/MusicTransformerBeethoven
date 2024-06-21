@@ -2,7 +2,7 @@ from tensorflow import keras
 import tensorflow as tf
 import params as par
 import sys
-from tensorflow.python.keras.optimizer_v2.learning_rate_schedule import LearningRateSchedule
+#from tensorflow.python.keras.optimizer_v2.learning_rate_schedule import LearningRateSchedule
 
 
 class MTFitCallback(keras.callbacks.Callback):
@@ -51,26 +51,96 @@ def transformer_dist_train_loss(y_true, y_pred):
     return _loss
 
 
-class CustomSchedule(LearningRateSchedule):
-    def __init__(self, d_model, warmup_steps=4000):
+# class CustomSchedule(LearningRateSchedule):
+#     def __init__(self, d_model, warmup_steps=4000):
+#         super(CustomSchedule, self).__init__()
+
+#         self.d_model = d_model
+#         self.d_model = tf.cast(self.d_model, tf.float32)
+
+#         self.warmup_steps = warmup_steps
+
+#     def get_config(self):
+#         super(CustomSchedule, self).get_config()
+
+#     def __call__(self, step):
+#         arg1 = tf.math.rsqrt(step)
+#         arg2 = step * (self.warmup_steps ** -1.5)
+
+#         return tf.math.rsqrt(self.d_model) * tf.math.minimum(arg1, arg2)
+
+#Adapted to use Cosine Annealing
+class CustomSchedule(tf.keras.optimizers.schedules.LearningRateSchedule):
+    def __init__(self, initial_learning_rate, decay_steps, alpha=0.0, name='CosineDecay', warmup_steps=0):
         super(CustomSchedule, self).__init__()
 
-        self.d_model = d_model
-        self.d_model = tf.cast(self.d_model, tf.float32)
-
+        self.initial_learning_rate = initial_learning_rate
+        self.decay_steps = decay_steps
+        self.alpha = alpha
         self.warmup_steps = warmup_steps
+        self.name = name
 
-    def get_config(self):
-        super(CustomSchedule, self).get_config()
+        # Cosine decay schedule
+        self.cosine_decay_schedule = tf.keras.optimizers.schedules.CosineDecay(
+            initial_learning_rate=self.initial_learning_rate,
+            decay_steps=self.decay_steps,
+            alpha=self.alpha,
+            name=self.name
+        )
 
     def __call__(self, step):
-        arg1 = tf.math.rsqrt(step)
-        arg2 = step * (self.warmup_steps ** -1.5)
+        if self.warmup_steps > 0 and step < self.warmup_steps:
+            # Linear warmup
+            return self.initial_learning_rate * (step / self.warmup_steps)
+        else:
+            # Cosine decay
+            return self.cosine_decay_schedule(step - self.warmup_steps)
 
-        return tf.math.rsqrt(self.d_model) * tf.math.minimum(arg1, arg2)
+    def get_config(self):
+        return {
+            'initial_learning_rate': self.initial_learning_rate,
+            'decay_steps': self.decay_steps,
+            'alpha': self.alpha,
+            'name': self.name,
+            'warmup_steps': self.warmup_steps
+        }
+
 
 
 if __name__ == '__main__':
     import numpy as np
-    loss = TransformerLoss()(np.array([[1],[0],[0]]), tf.constant([[0.5,0.5],[0.1,0.1],[0.1,0.1]]))
-    print(loss)
+    # loss = TransformerLoss()(np.array([[1],[0],[0]]), tf.constant([[0.5,0.5],[0.1,0.1],[0.1,0.1]]))
+    # print(loss)
+
+    import matplotlib.pyplot as plt
+    # Usage example
+    initial_learning_rate = 0.1
+    decay_steps = 10000
+    alpha = 0.01
+    warmup_steps = 1000
+
+    learning_rate_schedule = CustomSchedule(
+        initial_learning_rate=initial_learning_rate,
+        decay_steps=decay_steps,
+        alpha=alpha,
+        warmup_steps=warmup_steps
+    )
+
+    optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate_schedule)
+
+    # Define the model properly with an Input layer
+    model = tf.keras.models.Sequential([
+        tf.keras.layers.Input(shape=(10,)),
+        tf.keras.layers.Dense(10)
+    ])
+    model.compile(optimizer=optimizer, loss='sparse_categorical_crossentropy')
+
+    # Visualize the learning rate schedule
+    steps = range(decay_steps + warmup_steps)
+    learning_rates = [learning_rate_schedule(step).numpy() for step in steps]
+
+    plt.plot(steps, learning_rates)
+    plt.xlabel('Step')
+    plt.ylabel('Learning Rate')
+    plt.title('Custom Schedule with Warmup and Cosine Decay')
+    plt.show()

@@ -89,12 +89,13 @@ class CustomSchedule(tf.keras.optimizers.schedules.LearningRateSchedule):
         )
 
     def __call__(self, step):
-        if self.warmup_steps > 0 and step < self.warmup_steps:
-            # Linear warmup
-            return self.initial_learning_rate * (step / self.warmup_steps)
+        step = tf.cast(step, tf.float32)
+        if step < self.warmup_steps:
+            warmup_lr = self.initial_learning_rate * (step / tf.cast(self.warmup_steps, tf.float32))
+            return tf.cast(warmup_lr, tf.float32)
         else:
-            # Cosine decay
-            return self.cosine_decay_schedule(step - self.warmup_steps)
+            cosine_lr = self.cosine_decay_schedule(step - self.warmup_steps)
+            return tf.cast(cosine_lr, tf.float32)
 
     def get_config(self):
         return {

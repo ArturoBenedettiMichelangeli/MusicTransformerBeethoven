@@ -47,15 +47,18 @@ print(dataset)
 
 # load model
 initial_learning_rate = l_r
-decay_steps = (len(dataset.files) // batch_size) * epochs
-alpha = 0.01 #fraction de initial_learning_rate qui représente le taux d'apprentissage minimum à la fin de la décroissance. Par exemple, si alpha=0.1 et initial_learning_rate=0.01, le taux d'apprentissage final sera 0.001.
-#à modifier en fonction des résultats
+total_steps = (len(dataset.files) // batch_size) * epochs  #nombre total d'etapes
+warmup_steps = int(0.1 * total_steps)  # 10% du nombre total d'etapes (a ajuster)
+decay_steps = total_steps - warmup_steps  # etapes de decroissance apres warmup
+alpha = 0.01 #fraction de initial_learning_rate qui represente le taux d'apprentissage minimum a la fin de la decroissance. Par exemple, si alpha=0.1 et initial_learning_rate=0.01, le taux d'apprentissage final sera 0.001.
+#a modifier en fonction des resultats
 
 # Load model
 learning_rate = callback.CustomSchedule(
     initial_learning_rate=initial_learning_rate,
     decay_steps=decay_steps,
-    alpha=alpha
+    alpha=alpha,
+    warmup_steps=warmup_steps
 )
 opt = Adam(learning_rate, beta_1=0.9, beta_2=0.98, epsilon=1e-9)
 

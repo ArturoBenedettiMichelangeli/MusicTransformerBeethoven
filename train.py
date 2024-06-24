@@ -86,7 +86,7 @@ eval_summary_writer = tf.summary.create_file_writer(eval_log_dir)
 if pickle_dir=="/content/MusicTransformerBeethoven/dataset/preprocessed_midi": #general (and big) dataset
     freq = 50
 else: #specific (and small) dataset
-    freq = 10
+    freq = 5
 
 
 # Train Start

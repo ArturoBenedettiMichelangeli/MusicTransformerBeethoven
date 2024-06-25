@@ -74,7 +74,7 @@ mt = MusicTransformerDecoder(
             vocab_size=par.vocab_size,
             num_layer=num_layer,
             max_seq=max_seq,
-            dropout=0.2,
+            dropout=0.4,
             debug=False, loader_path=load_path)
 mt.compile(optimizer=opt, loss=callback.transformer_dist_train_loss)
 

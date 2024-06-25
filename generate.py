@@ -44,7 +44,7 @@ if mode == 'enc-dec':
             vocab_size=par.vocab_size,
             num_layer=6,
             max_seq=2048,
-            dropout=0.2,
+            dropout=0.4,
             debug=False, loader_path=load_path)
 else:
     print(">> generate with decoder wise... beam size is {}".format(beam))

@@ -48,7 +48,12 @@ print(dataset)
 # load model
 initial_learning_rate = l_r
 total_steps = (len(dataset.files) // batch_size) * epochs  #nombre total d'etapes
-warmup_steps = int(0.1 * total_steps)  # 10% du nombre total d'etapes (a ajuster)
+
+if pickle_dir=="/content/MusicTransformerBeethoven/dataset/preprocessed_midi":
+    warmup_steps = int(0.1 * total_steps)
+else:
+    warmup_steps = int(0.05 * total_steps) #less warmup steps for fine-tuning
+
 decay_steps = total_steps - warmup_steps  # etapes de decroissance apres warmup
 alpha = 0.1 #fraction de initial_learning_rate qui represente le taux d'apprentissage minimum a la fin de la decroissance. Par exemple, si alpha=0.1 et initial_learning_rate=0.01, le taux d'apprentissage final sera 0.001.
 #a modifier en fonction des resultats

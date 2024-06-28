@@ -53,7 +53,7 @@ class Data:
         return x, y
 
     def slide_seq2seq_batch(self, batch_size, length, mode='train'):
-        data = self.batch(batch_size, length+1, mode)
+        data, _ = self.batch(batch_size, length+1, mode)
         x = data[:, :-1]
         y = data[:, 1:]
         return x, y

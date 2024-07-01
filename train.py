@@ -96,10 +96,15 @@ else: #maestro dataset
     freq = 100
 
 
+import matplotlib.pyplot as plt
+
 # Train Start (without maestro)
 if pickle_dir != "/content/MusicTransformerBeethoven/dataset/preprocessed_midi_maestro":
     print("\n\nNOT MAESTRO TRAINING\n\n")
     idx = 0
+    train_losses, train_perplexities, train_accuracies = [], [], []
+    eval_losses, eval_perplexities, eval_accuracies = [], [], []
+
     for e in range(epochs):
         mt.reset_metrics()
         for b in range(len(dataset.files) // batch_size):
@@ -131,19 +136,27 @@ if pickle_dir != "/content/MusicTransformerBeethoven/dataset/preprocessed_midi_m
                     tf.summary.scalar('loss', eval_result_metrics[0], step=idx)
                     tf.summary.scalar('perplexity', eval_result_metrics[1], step=idx)
                     tf.summary.scalar('accuracy', eval_result_metrics[2], step=idx)
-                    # for i, weight in enumerate(weights):
-                    #     with tf.name_scope("layer_%d" % i):
-                    #         with tf.name_scope("w"):
-                    #             utils.attention_image_summary(weight, step=idx)
+
+                # Store metrics
+                train_losses.append(result_metrics[0])
+                train_perplexities.append(result_metrics[1])
+                train_accuracies.append(result_metrics[2])
+                eval_losses.append(eval_result_metrics[0])
+                eval_perplexities.append(eval_result_metrics[1])
+                eval_accuracies.append(eval_result_metrics[2])
 
                 idx += 1
                 print('\n====================================================')
                 print('Epoch/Batch: {}/{}'.format(e, b))
                 print('Train >>>> Loss: {:6.6}, Perplexity: {:6.6}, Accuracy: {}'.format(result_metrics[0], result_metrics[1], result_metrics[2]))
                 print('Eval >>>> Loss: {:6.6}, Perplexity: {:6.6}, Accuracy: {}'.format(eval_result_metrics[0], eval_result_metrics[1], eval_result_metrics[2]))
-else: #maestro dataset only
+
+else: # maestro dataset only
     print("\n\nMAESTRO TRAINING\n\n")
     idx = 0
+    train_losses, train_perplexities, train_accuracies = [], [], []
+    eval_losses, eval_perplexities, eval_accuracies = [], [], []
+
     for e in range(epochs):
         mt.reset_metrics()
         for b in range(len(dataset.files) // batch_size):
@@ -175,13 +188,40 @@ else: #maestro dataset only
                     tf.summary.scalar('loss', eval_result_metrics[0], step=idx)
                     tf.summary.scalar('perplexity', eval_result_metrics[1], step=idx)
                     tf.summary.scalar('accuracy', eval_result_metrics[2], step=idx)
-                    # for i, weight in enumerate(weights):
-                    #     with tf.name_scope("layer_%d" % i):
-                    #         with tf.name_scope("w"):
-                    #             utils.attention_image_summary(weight, step=idx)
+
+                # Store metrics
+                train_losses.append(result_metrics[0])
+                train_perplexities.append(result_metrics[1])
+                train_accuracies.append(result_metrics[2])
+                eval_losses.append(eval_result_metrics[0])
+                eval_perplexities.append(eval_result_metrics[1])
+                eval_accuracies.append(eval_result_metrics[2])
 
                 idx += 1
                 print('\n====================================================')
                 print('Epoch/Batch: {}/{}'.format(e, b))
                 print('Train >>>> Loss: {:6.6}, Perplexity: {:6.6}, Accuracy: {}'.format(result_metrics[0], result_metrics[1], result_metrics[2]))
                 print('Eval >>>> Loss: {:6.6}, Perplexity: {:6.6}, Accuracy: {}'.format(eval_result_metrics[0], eval_result_metrics[1], eval_result_metrics[2]))
+
+# Plot all metrics at the end of training
+plt.figure(figsize=(18, 6))
+
+plt.subplot(1, 3, 1)
+plt.plot(train_losses, label='Train Loss')
+plt.plot(eval_losses, label='Eval Loss')
+plt.legend()
+plt.title('Loss')
+
+plt.subplot(1, 3, 2)
+plt.plot(train_perplexities, label='Train Perplexity')
+plt.plot(eval_perplexities, label='Eval Perplexity')
+plt.legend()
+plt.title('Perplexity')
+
+plt.subplot(1, 3, 3)
+plt.plot(train_accuracies, label='Train Accuracy')
+plt.plot(eval_accuracies, label='Eval Accuracy')
+plt.legend()
+plt.title('Accuracy')
+
+plt.show()

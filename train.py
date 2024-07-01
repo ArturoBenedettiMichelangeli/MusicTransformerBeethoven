@@ -23,6 +23,7 @@ parser.add_argument('--save_path', default="result/dec0722", help='모델 저장
 parser.add_argument('--is_reuse', default=False)
 parser.add_argument('--multi_gpu', default=True)
 parser.add_argument('--num_layers', default=6, type=int)
+parser.add_argument('--cosine_annealing', default=False)
 
 args = parser.parse_args()
 
@@ -38,6 +39,7 @@ load_path = args.load_path
 save_path = args.save_path
 multi_gpu = args.multi_gpu
 num_layer = args.num_layers
+cosine_annealing = args.cosine_annealing
 
 
 # load data
@@ -54,17 +56,21 @@ if pickle_dir=="/content/MusicTransformerBeethoven/dataset/preprocessed_midi" or
 else:
     warmup_steps = int(0.05 * total_steps) #less warmup steps for fine-tuning
 
-decay_steps = total_steps - warmup_steps  # etapes de decroissance apres warmup
+decay_steps = total_steps - warmup_steps  # etapes de decroissance apres warmup dans la stratégie du Cosine Annealing
 alpha = 0.1 #fraction de initial_learning_rate qui represente le taux d'apprentissage minimum a la fin de la decroissance. Par exemple, si alpha=0.1 et initial_learning_rate=0.01, le taux d'apprentissage final sera 0.001.
 #a modifier en fonction des resultats
 
 # Load model
-learning_rate = callback.CustomSchedule(
-    initial_learning_rate=initial_learning_rate,
-    decay_steps=decay_steps,
-    alpha=alpha,
-    warmup_steps=warmup_steps
-)
+if cosine_annealing==True:
+    learning_rate = callback.CustomScheduleCA(
+        initial_learning_rate=initial_learning_rate,
+        decay_steps=decay_steps,
+        alpha=alpha,
+        warmup_steps=warmup_steps
+    )
+else:
+    learning_rate = callback.CustomSchedule(par.embedding_dim) if l_r is None else l_r
+
 opt = Adam(learning_rate, beta_1=0.9, beta_2=0.98, epsilon=1e-9)
 
 
@@ -89,7 +95,7 @@ eval_summary_writer = tf.summary.create_file_writer(eval_log_dir)
 
 #define frequency of reports based on the dataset size
 if pickle_dir=="/content/MusicTransformerBeethoven/dataset/preprocessed_midi": #general (and big) dataset
-    freq = 50
+    freq = 100
 elif pickle_dir=="/content/MusicTransformerBeethoven/dataset/preprocessed_midi_Beethoven": #specific (and small) dataset
     freq = 5
 else: #maestro dataset

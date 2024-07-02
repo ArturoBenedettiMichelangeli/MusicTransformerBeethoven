@@ -69,7 +69,7 @@ if cosine_annealing==True:
         warmup_steps=warmup_steps
     )
 else:
-    learning_rate = callback.CustomSchedule(par.embedding_dim) if l_r is None else l_r
+    learning_rate = callback.CustomSchedule(par.embedding_dim, warmup_steps) if l_r is None else l_r
 
 opt = Adam(learning_rate, beta_1=0.9, beta_2=0.98, epsilon=1e-9)
 

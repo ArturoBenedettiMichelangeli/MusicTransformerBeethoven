@@ -2,7 +2,7 @@ from tensorflow import keras
 import tensorflow as tf
 import params as par
 import sys
-from tensorflow.python.keras.optimizer_v2.learning_rate_schedule import LearningRateSchedule
+from tensorflow.keras.optimizers.schedules import LearningRateSchedule
 
 
 class MTFitCallback(keras.callbacks.Callback):

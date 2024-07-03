@@ -14,6 +14,8 @@ tf.executing_eagerly()
 parser = argparse.ArgumentParser()
 
 parser.add_argument('--l_r', default=None, help='학습률', type=float)
+parser.add_argument('--l_r_schedule', default='Default', type=str, choices=['CosineAnnealing', 'Default', 'Fixed', 'FixedWLinearWarmup'], 
+                    help="Choisir la stratégie de learning rate schedule parmi : 'CosineAnnealing', 'Default', 'Fixed', 'FixedWLinearWarmup'")
 parser.add_argument('--batch_size', default=2, help='batch size', type=int)
 parser.add_argument('--pickle_dir', default='music', help='데이터셋 경로')
 parser.add_argument('--max_seq', default=2048, help='longueur maximale', type=int)
@@ -23,13 +25,13 @@ parser.add_argument('--save_path', default="result/dec0722", help='모델 저장
 parser.add_argument('--is_reuse', default=False)
 parser.add_argument('--multi_gpu', default=True)
 parser.add_argument('--num_layers', default=6, type=int)
-parser.add_argument('--cosine_annealing', default=False)
 
 args = parser.parse_args()
 
 
 # set arguments
 l_r = args.l_r
+l_r_schedule = args.l_r_schedule
 batch_size = args.batch_size
 pickle_dir = args.pickle_dir
 max_seq = args.max_seq
@@ -39,7 +41,6 @@ load_path = args.load_path
 save_path = args.save_path
 multi_gpu = args.multi_gpu
 num_layer = args.num_layers
-cosine_annealing = args.cosine_annealing
 
 
 # load data
@@ -48,7 +49,7 @@ print(dataset)
 
 
 # load model
-initial_learning_rate = l_r
+
 total_steps = (len(dataset.files) // batch_size) * epochs  #nombre total d'etapes
 
 if pickle_dir=="/content/MusicTransformerBeethoven/dataset/preprocessed_midi" or pickle_dir=="/content/MusicTransformerBeethoven/dataset/preprocessed_midi_maestro":
@@ -61,15 +62,25 @@ alpha = 0.1 #fraction de initial_learning_rate qui represente le taux d'apprenti
 #a modifier en fonction des resultats
 
 # Load model
-if cosine_annealing==True:
+if l_r_schedule=='CosineAnnealing':
     learning_rate = callback.CustomScheduleCA(
-        initial_learning_rate=initial_learning_rate,
+        initial_learning_rate=l_r,
         decay_steps=decay_steps,
         alpha=alpha,
         warmup_steps=warmup_steps
     )
-else:
+elif l_r_schedule=='Default':
     learning_rate = callback.CustomSchedule(par.embedding_dim, warmup_steps) if l_r is None else l_r
+elif l_r_schedule=='Fixed':
+    learning_rate = callback.CustomScheduleCWLW(
+        learning_rate=l_r,
+        warmup_steps=0
+    )
+elif l_r_schedule=='FixedWLinearWarmup':
+    learning_rate = callback.CustomScheduleCWLW(
+        learning_rate=l_r,
+        warmup_steps=warmup_steps
+    )
 
 opt = Adam(learning_rate, beta_1=0.9, beta_2=0.98, epsilon=1e-9)
 
@@ -102,14 +113,12 @@ else: #maestro dataset
     freq = 100
 
 
-import matplotlib.pyplot as plt
+
 
 # Train Start (without maestro)
 if pickle_dir != "/content/MusicTransformerBeethoven/dataset/preprocessed_midi_maestro":
     print("\n\nNOT MAESTRO TRAINING\n\n")
     idx = 0
-    train_losses, train_perplexities, train_accuracies = [], [], []
-    eval_losses, eval_perplexities, eval_accuracies = [], [], []
 
     for e in range(epochs):
         mt.reset_metrics()
@@ -143,14 +152,6 @@ if pickle_dir != "/content/MusicTransformerBeethoven/dataset/preprocessed_midi_m
                     tf.summary.scalar('perplexity', eval_result_metrics[1], step=idx)
                     tf.summary.scalar('accuracy', eval_result_metrics[2], step=idx)
 
-                # Store metrics
-                train_losses.append(result_metrics[0])
-                train_perplexities.append(result_metrics[1])
-                train_accuracies.append(result_metrics[2])
-                eval_losses.append(eval_result_metrics[0])
-                eval_perplexities.append(eval_result_metrics[1])
-                eval_accuracies.append(eval_result_metrics[2])
-
                 idx += 1
                 print('\n====================================================')
                 print('Epoch/Batch: {}/{}'.format(e, b))
@@ -160,8 +161,6 @@ if pickle_dir != "/content/MusicTransformerBeethoven/dataset/preprocessed_midi_m
 else: # maestro dataset only
     print("\n\nMAESTRO TRAINING\n\n")
     idx = 0
-    train_losses, train_perplexities, train_accuracies = [], [], []
-    eval_losses, eval_perplexities, eval_accuracies = [], [], []
 
     for e in range(epochs):
         mt.reset_metrics()
@@ -195,39 +194,8 @@ else: # maestro dataset only
                     tf.summary.scalar('perplexity', eval_result_metrics[1], step=idx)
                     tf.summary.scalar('accuracy', eval_result_metrics[2], step=idx)
 
-                # Store metrics
-                train_losses.append(result_metrics[0])
-                train_perplexities.append(result_metrics[1])
-                train_accuracies.append(result_metrics[2])
-                eval_losses.append(eval_result_metrics[0])
-                eval_perplexities.append(eval_result_metrics[1])
-                eval_accuracies.append(eval_result_metrics[2])
-
                 idx += 1
                 print('\n====================================================')
                 print('Epoch/Batch: {}/{}'.format(e, b))
                 print('Train >>>> Loss: {:6.6}, Perplexity: {:6.6}, Accuracy: {}'.format(result_metrics[0], result_metrics[1], result_metrics[2]))
                 print('Eval >>>> Loss: {:6.6}, Perplexity: {:6.6}, Accuracy: {}'.format(eval_result_metrics[0], eval_result_metrics[1], eval_result_metrics[2]))
-
-# Plot all metrics at the end of training
-plt.figure(figsize=(18, 6))
-
-plt.subplot(1, 3, 1)
-plt.plot(train_losses, label='Train Loss')
-plt.plot(eval_losses, label='Eval Loss')
-plt.legend()
-plt.title('Loss')
-
-plt.subplot(1, 3, 2)
-plt.plot(train_perplexities, label='Train Perplexity')
-plt.plot(eval_perplexities, label='Eval Perplexity')
-plt.legend()
-plt.title('Perplexity')
-
-plt.subplot(1, 3, 3)
-plt.plot(train_accuracies, label='Train Accuracy')
-plt.plot(eval_accuracies, label='Eval Accuracy')
-plt.legend()
-plt.title('Accuracy')
-
-plt.show()

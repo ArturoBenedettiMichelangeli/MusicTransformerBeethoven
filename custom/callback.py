@@ -106,6 +106,18 @@ class CustomScheduleCA(LearningRateSchedule):
             'warmup_steps': self.warmup_steps
         }
 
+#Constant learning rate With Linear Warmup (last fine-tune)
+class CustomScheduleCWLW(LearningRateSchedule):
+    def __init__(self, learning_rate, warmup_steps=165):
+        super(CustomScheduleCWLW, self).__init__()
+        self.learning_rate = learning_rate
+        self.warmup_steps = warmup_steps
+
+    def __call__(self, step):
+        if step < self.warmup_steps:
+            return self.learning_rate * (step / tf.cast(self.warmup_steps, tf.float32))
+        else:
+            return self.learning_rate
 
 
 if __name__ == '__main__':

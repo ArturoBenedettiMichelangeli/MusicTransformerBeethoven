@@ -115,9 +115,9 @@ class CustomScheduleCWLW(LearningRateSchedule):
 
     def __call__(self, step):
         if step < self.warmup_steps:
-            return self.learning_rate * (step / tf.cast(self.warmup_steps, tf.float32))
+            return tf.cast(self.learning_rate * (step / self.warmup_steps),tf.float32)
         else:
-            return self.learning_rate
+            return tf.cast(self.learning_rate, tf.float32)
 
 
 if __name__ == '__main__':

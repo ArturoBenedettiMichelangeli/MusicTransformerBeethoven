@@ -4,6 +4,9 @@ import pickle
 from tensorflow.python import keras
 import numpy as np
 import params as par
+import glob
+from pathlib import Path
+
 
 
 class Data:
@@ -16,19 +19,88 @@ class Data:
         }
         self._seq_file_name_idx = 0
         self._seq_idx = 0
-        self.sample_weights = None
-        #-----Poids des fichiers midi
-        if dir_path == "/content/MusicTransformerBeethoven/dataset/preprocessed_midi": #dataset général
-            self.sample_weights = np.array([10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20])
-        #liste des poids pour chaque fichier midi obtenue en executant poids_des_midi.py
-        if dir_path == "/content/MusicTransformerBeethoven/dataset/preprocessed_midi_Beethoven": #sonates Beethoven (sonates entieres ou premier mouvement, peu importe)
-            self.sample_weights = np.array([1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,2,5,5,5,5,5,5,5,5,5,5,5,5])
-        #liste des poids personnalisée
-        #-----
+        self.sample_weights = self.weights_init(dir_path)
         pass
 
     def __repr__(self):
         return '<class Data has "'+str(len(self.files))+'" files>'
+
+    def weights_init(self, dir_path):
+        if dir_path == "/content/MusicTransformerBeethoven/dataset/preprocessed_midi":
+            # Répertoire contenant les fichiers
+            directory = Path("/content/MusicTransformerBeethoven/dataset/midi_transposed")
+
+            # Initialisation de la liste pour stocker les poids
+            weights = []
+
+            # Parcours des fichiers dans le répertoire
+            for filepath in directory.glob('*'):
+                # Vérification si le fichier est un fichier ordinaire
+                if filepath.is_file():
+                    # Extraction du nom de fichier
+                    filename = filepath.name
+                    # Extraction du préfixe du nom de fichier
+                    if filename.startswith("alb"):
+                        weights.append(1)
+                    elif filename.startswith("bach"):
+                        weights.append(5)
+                    elif filename.startswith("bartok"):
+                        weights.append(1)
+                    elif filename.startswith("bor"):
+                        weights.append(1)
+                    elif filename.startswith("br"):
+                        weights.append(2)
+                    elif filename.startswith("burg"):
+                        weights.append(1)
+                    elif filename.startswith("ch"):
+                        weights.append(2)
+                    elif filename.startswith("clementi"):
+                        weights.append(10)
+                    elif filename.startswith("gra"):
+                        weights.append(1)
+                    elif filename.startswith("grieg"):
+                        weights.append(1) 
+                    elif filename.startswith("haendel"):
+                        weights.append(5)
+                    elif filename.startswith("haydn"):
+                        weights.append(20)
+                    elif filename.startswith("hummel"):
+                        weights.append(20) 
+                    elif filename.startswith("li"):
+                        weights.append(2)
+                    elif filename.startswith("mendel"):
+                        weights.append(2)
+                    elif filename.startswith("mos"):
+                        weights.append(1)
+                    elif filename.startswith("moz") or filename.startswith("mz"):
+                        weights.append(10)
+                    elif filename.startswith("muss"):
+                        weights.append(1)
+                    elif filename.startswith("rac"):
+                        weights.append(1)
+                    elif filename.startswith("ravel"):
+                        weights.append(1)
+                    elif filename.startswith("satie"):
+                        weights.append(1)
+                    elif filename.startswith("schn") or filename.startswith("schum") or filename.startswith("scn"):
+                        weights.append(2)
+                    elif filename.startswith("schub"):
+                        weights.append(20)        
+                    elif filename.startswith("scriabine"):
+                        weights.append(1)
+                    elif filename.startswith("ty"):
+                        weights.append(1)                     
+                    # Ajouter d'autres conditions pour d'autres préfixes si nécessaire
+                    else:
+                        # Par défaut, ajouter 0 si aucun préfixe correspondant n'est trouvé
+                        weights.append(0)
+            return weights
+           
+        elif dir_path == "/content/MusicTransformerBeethoven/dataset/preprocessed_midi_beethoven" or dir_path == "/content/MusicTransformerBeethoven/dataset/preprocessed_First_mov":
+            weights = [1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,2,5,5,5,5,5,5,5,5,5,5,5,5]
+            return weights
+        else:
+            return None
 
     def batch(self, batch_size, length, mode='train'):
 

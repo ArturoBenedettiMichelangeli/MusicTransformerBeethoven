@@ -107,8 +107,8 @@ eval_summary_writer = tf.summary.create_file_writer(eval_log_dir)
 #define frequency of reports based on the dataset size
 if pickle_dir=="/content/MusicTransformerBeethoven/dataset/preprocessed_midi": #general (and big) dataset
     freq = 1000
-elif pickle_dir=="/content/MusicTransformerBeethoven/dataset/preprocessed_midi_Beethoven": #specific (and small) dataset
-    freq = 50
+elif pickle_dir=="/content/MusicTransformerBeethoven/dataset/preprocessed_midi_beethoven" or pickle_dir=="/content/MusicTransformerBeethoven/dataset/preprocessed_First_mov": #specific (and small) dataset
+    freq = 100
 else: #maestro dataset
     freq = 1000
 

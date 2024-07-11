@@ -95,9 +95,8 @@ class Data:
                         # Par défaut, ajouter 0 si aucun préfixe correspondant n'est trouvé
                         weights.append(0)
             return weights
-           
         elif dir_path == "/content/MusicTransformerBeethoven/dataset/preprocessed_midi_beethoven" or dir_path == "/content/MusicTransformerBeethoven/dataset/preprocessed_First_mov":
-            weights = [1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,2,5,5,5,5,5,5,5,5,5,5,5,5]
+            weights = [1 for _ in range(23*10)] + [2 for _ in range(23*10)] + [3 for _ in range(23*12)]
             return weights
         else:
             return None

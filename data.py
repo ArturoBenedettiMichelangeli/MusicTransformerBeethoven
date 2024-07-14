@@ -62,7 +62,7 @@ class Data:
                         weights.append(1) 
                     elif filename.startswith("haendel"):
                         weights.append(5)
-                    elif filename.startswith("haydn"):
+                    elif filename.startswith("hay"):
                         weights.append(20)
                     elif filename.startswith("hummel"):
                         weights.append(20) 

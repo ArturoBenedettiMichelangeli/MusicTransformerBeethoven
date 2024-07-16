@@ -172,57 +172,119 @@ class MusicTransformer(keras.Model):
         config['dist'] = self.dist
         return config
 
-    def generate(self, prior: list, beam=None, length=2048, tf_board=False):
-        prior = tf.constant([prior])
+    # def generate(self, prior: list, beam=None, length=2048, tf_board=False):
+    #     prior = tf.constant([prior])
 
-        decode_array = [par.token_sos]
-        # TODO: add beam search
+    #     decode_array = [par.token_sos]
+    #     # TODO: add beam search
+    #     if beam is not None:
+    #         k = beam
+    #         decode_array = tf.constant([decode_array])
+
+    #         for i in range(min(self.max_seq, length)):
+    #             if i % 100 == 0:
+    #                 print('generating... {}% completed'.format((i/min(self.max_seq, length))*100))
+    #             enc_mask, tar_mask, look_ahead_mask = \
+    #                 utils.get_masked_with_pad_tensor(decode_array.shape[1], prior, decode_array)
+
+    #             result = self.call(prior, targets=decode_array, src_mask=enc_mask,
+    #                                 trg_mask=tar_mask, lookup_mask=look_ahead_mask, training=False)
+    #             result = result[:,-1,:]
+    #             result = tf.reshape(result, (1, -1))
+    #             result, result_idx = tf.nn.top_k(result, k)
+    #             row = result_idx // par.vocab_size
+    #             col = result_idx % par.vocab_size
+
+    #             result_array = []
+    #             for r, c in zip(row[0], col[0]):
+    #                 prev_array = decode_array[r.numpy()]
+    #                 result_unit = tf.concat([prev_array, [c.numpy()]], -1)
+    #                 result_array.append(result_unit.numpy())
+    #                 # result_array.append(tf.concat([decode_array[idx], result[:,idx_idx]], -1))
+    #             decode_array = tf.constant(result_array)
+    #             del enc_mask
+    #             del tar_mask
+    #             del look_ahead_mask
+    #         decode_array = decode_array[0]
+    #     else:
+    #         decode_array = tf.constant([decode_array])
+    #         for i in Bar('generating').iter(range(min(self.max_seq, length))):
+    #             # if i % 100 == 0:
+    #             #     print('generating... {}% completed'.format((i/min(self.max_seq, length))*100))
+    #             enc_mask, tar_mask, look_ahead_mask = \
+    #                 utils.get_masked_with_pad_tensor(decode_array.shape[1], prior, decode_array)
+
+    #             result = self.call(prior, targets=decode_array, src_mask=enc_mask,
+    #                                 trg_mask=tar_mask, lookup_mask=look_ahead_mask, training=False)
+    #             result = tf.argmax(result, -1)
+    #             result = tf.cast(result, tf.int32)
+    #             decode_array = tf.concat([decode_array, tf.expand_dims(result[:, -1], 0)], -1)
+    #             del enc_mask
+    #             del tar_mask
+    #             del look_ahead_mask
+    #     return decode_array.numpy()
+
+    def generate(self, prior: list, beam=None, length=2048, tf_board=False, use_softmax=True):
+        decode_array = prior
+        decode_array = tf.constant([decode_array])
+
         if beam is not None:
             k = beam
-            decode_array = tf.constant([decode_array])
+            sequences = [(decode_array, 0.0)]  # Liste de tuples (sequence, score)
 
             for i in range(min(self.max_seq, length)):
-                if i % 100 == 0:
-                    print('generating... {}% completed'.format((i/min(self.max_seq, length))*100))
-                enc_mask, tar_mask, look_ahead_mask = \
-                    utils.get_masked_with_pad_tensor(decode_array.shape[1], prior, decode_array)
+                all_candidates = []
 
-                result = self.call(prior, targets=decode_array, src_mask=enc_mask,
-                                    trg_mask=tar_mask, lookup_mask=look_ahead_mask, training=False)
-                result = result[:,-1,:]
-                result = tf.reshape(result, (1, -1))
-                result, result_idx = tf.nn.top_k(result, k)
-                row = result_idx // par.vocab_size
-                col = result_idx % par.vocab_size
+                for seq, score in sequences:
+                    _, _, look_ahead_mask = \
+                        utils.get_masked_with_pad_tensor(seq.shape[1], seq, seq)
 
-                result_array = []
-                for r, c in zip(row[0], col[0]):
-                    prev_array = decode_array[r.numpy()]
-                    result_unit = tf.concat([prev_array, [c.numpy()]], -1)
-                    result_array.append(result_unit.numpy())
-                    # result_array.append(tf.concat([decode_array[idx], result[:,idx_idx]], -1))
-                decode_array = tf.constant(result_array)
-                del enc_mask
-                del tar_mask
-                del look_ahead_mask
-            decode_array = decode_array[0]
+                    result = self.call(seq, lookup_mask=look_ahead_mask, training=False, eval=False)
+
+                    result = result[:, -1, :]  # Récupérer les logits du dernier token généré
+                    result = tf.nn.log_softmax(result, -1)  # Utilisation de log_softmax sans condition
+
+                    top_k_probs, top_k_indices = tf.nn.top_k(result, k)
+
+                    for j in range(k):
+                        candidate_seq = tf.concat([seq, tf.expand_dims([top_k_indices[0][j]], 0)], -1)
+                        candidate_score = score - tf.math.log(top_k_probs[0][j].numpy())
+                        all_candidates.append((candidate_seq, candidate_score.numpy()))
+
+                    del look_ahead_mask
+
+                ordered = sorted(all_candidates, key=lambda tup: tup[1])
+                sequences = ordered[:k]
+
+            decode_array = sequences[0][0]  # Choisir la séquence avec le score le plus élevé
+
         else:
-            decode_array = tf.constant([decode_array])
             for i in Bar('generating').iter(range(min(self.max_seq, length))):
-                # if i % 100 == 0:
-                #     print('generating... {}% completed'.format((i/min(self.max_seq, length))*100))
-                enc_mask, tar_mask, look_ahead_mask = \
-                    utils.get_masked_with_pad_tensor(decode_array.shape[1], prior, decode_array)
+                if decode_array.shape[1] >= self.max_seq:
+                    break
 
-                result = self.call(prior, targets=decode_array, src_mask=enc_mask,
-                                    trg_mask=tar_mask, lookup_mask=look_ahead_mask, training=False)
-                result = tf.argmax(result, -1)
-                result = tf.cast(result, tf.int32)
-                decode_array = tf.concat([decode_array, tf.expand_dims(result[:, -1], 0)], -1)
-                del enc_mask
-                del tar_mask
+                _, _, look_ahead_mask = \
+                    utils.get_masked_with_pad_tensor(decode_array.shape[1], decode_array, decode_array)
+
+                result = self.call(decode_array, lookup_mask=look_ahead_mask, training=False)
+
+                result = result[:, -1, :]  # Récupérer les logits du dernier token généré
+
+                if use_softmax:
+                    result = tf.nn.softmax(result, -1)
+                    pdf = tfp.distributions.Categorical(logits=result)
+                    next_token = pdf.sample()
+                else:
+                    next_token = tf.argmax(result, -1)  # Utilisation de argmax pour choisir le prochain token
+
+                decode_array = tf.concat([decode_array, next_token[:, tf.newaxis]], -1)
                 del look_ahead_mask
+
+            decode_array = decode_array[0]
+
         return decode_array.numpy()
+
+
 
     def _set_metrics(self):
         accuracy = keras.metrics.SparseCategoricalAccuracy()
@@ -470,69 +532,129 @@ class MusicTransformerDecoder(keras.Model):
         config['dist'] = self.dist
         return config
 
-    def generate(self, prior: list, beam=None, length=2048, tf_board=False):
+    # def generate(self, prior: list, beam=None, length=2048, tf_board=False):
+    #     decode_array = prior
+    #     decode_array = tf.constant([decode_array])
+
+    #     # TODO: add beam search
+    #     if beam is not None:
+    #         k = beam
+    #         for i in range(min(self.max_seq, length)):
+    #             if decode_array.shape[1] >= self.max_seq:
+    #                 break
+    #             if i % 100 == 0:
+    #                 print('generating... {}% completed'.format((i/min(self.max_seq, length))*100))
+    #             _, _, look_ahead_mask = \
+    #                 utils.get_masked_with_pad_tensor(decode_array.shape[1], decode_array, decode_array)
+
+    #             result = self.call(decode_array, lookup_mask=look_ahead_mask, training=False, eval=False)
+    #             if tf_board:
+    #                 tf.summary.image('generate_vector', tf.expand_dims([result[0]], -1), i)
+
+    #             result = result[:,-1,:]
+    #             result = tf.reshape(result, (1, -1))
+    #             result, result_idx = tf.nn.top_k(result, k)
+    #             row = result_idx // par.vocab_size
+    #             col = result_idx % par.vocab_size
+
+    #             result_array = []
+    #             for r, c in zip(row[0], col[0]):
+    #                 prev_array = decode_array[r.numpy()]
+    #                 result_unit = tf.concat([prev_array, [c.numpy()]], -1)
+    #                 result_array.append(result_unit.numpy())
+    #                 # result_array.append(tf.concat([decode_array[idx], result[:,idx_idx]], -1))
+    #             decode_array = tf.constant(result_array)
+    #             del look_ahead_mask
+    #         decode_array = decode_array[0]
+
+    #     else:
+    #         for i in Bar('generating').iter(range(min(self.max_seq, length))):
+    #             # print(decode_array.shape[1])
+    #             if decode_array.shape[1] >= self.max_seq:
+    #                 break
+    #             # if i % 100 == 0:
+    #             #     print('generating... {}% completed'.format((i/min(self.max_seq, length))*100))
+    #             _, _, look_ahead_mask = \
+    #                 utils.get_masked_with_pad_tensor(decode_array.shape[1], decode_array, decode_array)
+
+    #             result = self.call(decode_array, lookup_mask=look_ahead_mask, training=False)
+    #             if tf_board:
+    #                 tf.summary.image('generate_vector', tf.expand_dims(result, -1), i)
+    #             # import sys
+    #             # tf.print('[debug out:]', result, sys.stdout )
+    #             u = random.uniform(0, 1)
+    #             if u > 1:
+    #                 result = tf.argmax(result[:, -1], -1)
+    #                 result = tf.cast(result, tf.int32)
+    #                 decode_array = tf.concat([decode_array, tf.expand_dims(result, -1)], -1)
+    #             else:
+    #                 pdf = tfp.distributions.Categorical(probs=result[:, -1])
+    #                 result = pdf.sample(1)
+    #                 result = tf.transpose(result, (1, 0))
+    #                 result = tf.cast(result, tf.int32)
+    #                 decode_array = tf.concat([decode_array, result], -1)
+    #             # decode_array = tf.concat([decode_array, tf.expand_dims(result[:, -1], 0)], -1)
+    #             del look_ahead_mask
+    #         decode_array = decode_array[0]
+
+    #     return decode_array.numpy()
+    
+    def generate(self, prior: list, beam=None, length=2048, tf_board=False, use_softmax=True):
         decode_array = prior
         decode_array = tf.constant([decode_array])
 
-        # TODO: add beam search
         if beam is not None:
             k = beam
+            sequences = [(decode_array, 0.0)]  # Liste de tuples (sequence, score)
+
             for i in range(min(self.max_seq, length)):
-                if decode_array.shape[1] >= self.max_seq:
-                    break
-                if i % 100 == 0:
-                    print('generating... {}% completed'.format((i/min(self.max_seq, length))*100))
-                _, _, look_ahead_mask = \
-                    utils.get_masked_with_pad_tensor(decode_array.shape[1], decode_array, decode_array)
+                all_candidates = []
 
-                result = self.call(decode_array, lookup_mask=look_ahead_mask, training=False, eval=False)
-                if tf_board:
-                    tf.summary.image('generate_vector', tf.expand_dims([result[0]], -1), i)
+                for seq, score in sequences:
+                    _, _, look_ahead_mask = \
+                        utils.get_masked_with_pad_tensor(seq.shape[1], seq, seq)
 
-                result = result[:,-1,:]
-                result = tf.reshape(result, (1, -1))
-                result, result_idx = tf.nn.top_k(result, k)
-                row = result_idx // par.vocab_size
-                col = result_idx % par.vocab_size
+                    result = self.call(seq, lookup_mask=look_ahead_mask, training=False, eval=False)
 
-                result_array = []
-                for r, c in zip(row[0], col[0]):
-                    prev_array = decode_array[r.numpy()]
-                    result_unit = tf.concat([prev_array, [c.numpy()]], -1)
-                    result_array.append(result_unit.numpy())
-                    # result_array.append(tf.concat([decode_array[idx], result[:,idx_idx]], -1))
-                decode_array = tf.constant(result_array)
-                del look_ahead_mask
-            decode_array = decode_array[0]
+                    result = result[:, -1, :]  # Récupérer les logits du dernier token généré
+                    result = tf.nn.log_softmax(result, -1)  # Utilisation de log_softmax sans condition
+
+                    top_k_probs, top_k_indices = tf.nn.top_k(result, k)
+
+                    for j in range(k):
+                        candidate_seq = tf.concat([seq, tf.expand_dims([top_k_indices[0][j]], 0)], -1)
+                        candidate_score = score - tf.math.log(top_k_probs[0][j].numpy())
+                        all_candidates.append((candidate_seq, candidate_score.numpy()))
+
+                    del look_ahead_mask
+
+                ordered = sorted(all_candidates, key=lambda tup: tup[1])
+                sequences = ordered[:k]
+
+            decode_array = sequences[0][0]  # Choisir la séquence avec le score le plus élevé
 
         else:
             for i in Bar('generating').iter(range(min(self.max_seq, length))):
-                # print(decode_array.shape[1])
                 if decode_array.shape[1] >= self.max_seq:
                     break
-                # if i % 100 == 0:
-                #     print('generating... {}% completed'.format((i/min(self.max_seq, length))*100))
+
                 _, _, look_ahead_mask = \
                     utils.get_masked_with_pad_tensor(decode_array.shape[1], decode_array, decode_array)
 
                 result = self.call(decode_array, lookup_mask=look_ahead_mask, training=False)
-                if tf_board:
-                    tf.summary.image('generate_vector', tf.expand_dims(result, -1), i)
-                # import sys
-                # tf.print('[debug out:]', result, sys.stdout )
-                u = random.uniform(0, 1)
-                if u > 1:
-                    result = tf.argmax(result[:, -1], -1)
-                    result = tf.cast(result, tf.int32)
-                    decode_array = tf.concat([decode_array, tf.expand_dims(result, -1)], -1)
+
+                result = result[:, -1, :]  # Récupérer les logits du dernier token généré
+
+                if use_softmax:
+                    result = tf.nn.softmax(result, -1)
+                    pdf = tfp.distributions.Categorical(logits=result)
+                    next_token = pdf.sample()
                 else:
-                    pdf = tfp.distributions.Categorical(probs=result[:, -1])
-                    result = pdf.sample(1)
-                    result = tf.transpose(result, (1, 0))
-                    result = tf.cast(result, tf.int32)
-                    decode_array = tf.concat([decode_array, result], -1)
-                # decode_array = tf.concat([decode_array, tf.expand_dims(result[:, -1], 0)], -1)
+                    next_token = tf.argmax(result, -1)  # Utilisation de argmax pour choisir le prochain token
+
+                decode_array = tf.concat([decode_array, next_token[:, tf.newaxis]], -1)
                 del look_ahead_mask
+
             decode_array = decode_array[0]
 
         return decode_array.numpy()

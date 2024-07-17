@@ -240,7 +240,6 @@ class MusicTransformer(keras.Model):
                         utils.get_masked_with_pad_tensor(seq.shape[1], seq, seq)
 
                     result = self.call(seq, lookup_mask=look_ahead_mask, training=False, eval=False)
-
                     result = result[:, -1, :]  # Récupérer les logits du dernier token généré
                     result = tf.nn.log_softmax(result, -1)  # Utilisation de log_softmax sans condition
 
@@ -259,14 +258,16 @@ class MusicTransformer(keras.Model):
             decode_array = sequences[0][0]  # Choisir la séquence avec le score le plus élevé
 
         else:
+            decode_array = tf.constant([decode_array])
             for i in Bar('generating').iter(range(min(self.max_seq, length))):
                 if decode_array.shape[1] >= self.max_seq:
                     break
 
                 _, _, look_ahead_mask = \
-                    utils.get_masked_with_pad_tensor(decode_array.shape[1], decode_array, decode_array)
+                    utils.get_masked_with_pad_tensor(decode_array.shape[1], prior, decode_array)
 
-                result = self.call(decode_array, lookup_mask=look_ahead_mask, training=False)
+                result = self.call(prior, targets=decode_array, src_mask=None,
+                                trg_mask=None, lookup_mask=look_ahead_mask, training=False)
 
                 result = result[:, -1, :]  # Récupérer les logits du dernier token généré
 
@@ -277,12 +278,14 @@ class MusicTransformer(keras.Model):
                 else:
                     next_token = tf.argmax(result, -1)  # Utilisation de argmax pour choisir le prochain token
 
-                decode_array = tf.concat([decode_array, next_token[:, tf.newaxis]], -1)
+                next_token = tf.expand_dims(next_token, 0)  # Ajouter une dimension pour concaténer
+                decode_array = tf.concat([decode_array, next_token], -1)
                 del look_ahead_mask
 
             decode_array = decode_array[0]
 
         return decode_array.numpy()
+
 
 
 
@@ -599,62 +602,67 @@ class MusicTransformerDecoder(keras.Model):
 
     #     return decode_array.numpy()
     
-    def generate(self, prior: list, beam=None, length=2048, tf_board=False, use_softmax=True):
-        decode_array = prior
-        decode_array = tf.constant([decode_array])
+    def generate(self, prior: list, beam=None, length=2048, tf_board=False):
+        prior = tf.constant([prior], dtype=tf.int32)
+        decode_array = [par.token_sos]
 
         if beam is not None:
             k = beam
+            decode_array = tf.constant([decode_array], dtype=tf.int32)
             sequences = [(decode_array, 0.0)]  # Liste de tuples (sequence, score)
 
             for i in range(min(self.max_seq, length)):
                 all_candidates = []
 
                 for seq, score in sequences:
-                    _, _, look_ahead_mask = \
-                        utils.get_masked_with_pad_tensor(seq.shape[1], seq, seq)
+                    _, _, look_ahead_mask = utils.get_masked_with_pad_tensor(seq.shape[1], prior, seq)
 
                     result = self.call(seq, lookup_mask=look_ahead_mask, training=False, eval=False)
-
                     result = result[:, -1, :]  # Récupérer les logits du dernier token généré
-                    result = tf.nn.log_softmax(result, -1)  # Utilisation de log_softmax sans condition
+                    log_probs = tf.nn.log_softmax(result, -1)  # Utilisation de log_softmax sans condition
 
-                    top_k_probs, top_k_indices = tf.nn.top_k(result, k)
+                    top_k_log_probs, top_k_indices = tf.nn.top_k(log_probs, k)
 
                     for j in range(k):
                         candidate_seq = tf.concat([seq, tf.expand_dims([top_k_indices[0][j]], 0)], -1)
-                        candidate_score = score - tf.math.log(top_k_probs[0][j].numpy())
-                        all_candidates.append((candidate_seq, candidate_score.numpy()))
+                        candidate_score = score + top_k_log_probs[0][j].numpy()  # Ajouter le log-probabilité au score
+                        all_candidates.append((candidate_seq, candidate_score))
 
                     del look_ahead_mask
 
-                ordered = sorted(all_candidates, key=lambda tup: tup[1])
+                ordered = sorted(all_candidates, key=lambda tup: tup[1], reverse=True)
                 sequences = ordered[:k]
 
             decode_array = sequences[0][0]  # Choisir la séquence avec le score le plus élevé
 
         else:
             for i in Bar('generating').iter(range(min(self.max_seq, length))):
+                # print(decode_array.shape[1])
                 if decode_array.shape[1] >= self.max_seq:
                     break
-
+                # if i % 100 == 0:
+                #     print('generating... {}% completed'.format((i/min(self.max_seq, length))*100))
                 _, _, look_ahead_mask = \
                     utils.get_masked_with_pad_tensor(decode_array.shape[1], decode_array, decode_array)
 
                 result = self.call(decode_array, lookup_mask=look_ahead_mask, training=False)
-
-                result = result[:, -1, :]  # Récupérer les logits du dernier token généré
-
-                if use_softmax:
-                    result = tf.nn.softmax(result, -1)
-                    pdf = tfp.distributions.Categorical(logits=result)
-                    next_token = pdf.sample()
+                if tf_board:
+                    tf.summary.image('generate_vector', tf.expand_dims(result, -1), i)
+                # import sys
+                # tf.print('[debug out:]', result, sys.stdout )
+                u = random.uniform(0, 1)
+                if u > 1:
+                    result = tf.argmax(result[:, -1], -1)
+                    result = tf.cast(result, tf.int32)
+                    decode_array = tf.concat([decode_array, tf.expand_dims(result, -1)], -1)
                 else:
-                    next_token = tf.argmax(result, -1)  # Utilisation de argmax pour choisir le prochain token
-
-                decode_array = tf.concat([decode_array, next_token[:, tf.newaxis]], -1)
+                    pdf = tfp.distributions.Categorical(probs=result[:, -1])
+                    result = pdf.sample(1)
+                    result = tf.transpose(result, (1, 0))
+                    result = tf.cast(result, tf.int32)
+                    decode_array = tf.concat([decode_array, result], -1)
+                # decode_array = tf.concat([decode_array, tf.expand_dims(result[:, -1], 0)], -1)
                 del look_ahead_mask
-
             decode_array = decode_array[0]
 
         return decode_array.numpy()

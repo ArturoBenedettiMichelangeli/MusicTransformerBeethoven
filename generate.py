@@ -18,7 +18,6 @@ parser.add_argument('--mode', default='dec')
 parser.add_argument('--beam', default=None, type=int)
 parser.add_argument('--length', default=2048, type=int)
 parser.add_argument('--save_path', default='/content/generated.mid', type=str)
-parser.add_argument('--use_softmax', default=False, type=bool)
 
 
 args = parser.parse_args()
@@ -31,7 +30,6 @@ mode = args.mode
 beam = args.beam
 length = args.length
 save_path= args.save_path
-use_softmax = args.use_softmax
 
 
 current_time = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
@@ -56,7 +54,7 @@ inputs = encode_midi('/content/MusicTransformerBeethoven/dataset/midi_Beethoven/
 
 
 with gen_summary_writer.as_default():
-    result = mt.generate(inputs[:200], beam=beam, length=length, tf_board=True, use_softmax=use_softmax)
+    result = mt.generate(inputs[:200], beam=beam, length=length, tf_board=True)
 
 for i in result:
     print(i)

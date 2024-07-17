@@ -1,5 +1,5 @@
 import pretty_midi
-
+import numpy as np
 
 RANGE_NOTE_ON = 128
 RANGE_NOTE_OFF = 128
@@ -64,31 +64,51 @@ class Event:
     def to_int(self):
         return START_IDX[self.type] + self.value
 
-    @staticmethod
-    def from_int(int_value):
-        info = Event._type_check(int_value)
-        return Event(info['type'], info['value'])
+    # @staticmethod
+    # def from_int(int_value):
+    #     info = Event._type_check(int_value)
+    #     return Event(info['type'], info['value'])
+
+    # @staticmethod
+    # def _type_check(int_value):
+    #     range_note_on = range(0, RANGE_NOTE_ON)
+    #     range_note_off = range(RANGE_NOTE_ON, RANGE_NOTE_ON+RANGE_NOTE_OFF)
+    #     range_time_shift = range(RANGE_NOTE_ON+RANGE_NOTE_OFF,RANGE_NOTE_ON+RANGE_NOTE_OFF+RANGE_TIME_SHIFT)
+
+    #     valid_value = int_value
+
+    #     if int_value in range_note_on:
+    #         return {'type': 'note_on', 'value': valid_value}
+    #     elif int_value in range_note_off:
+    #         valid_value -= RANGE_NOTE_ON
+    #         return {'type': 'note_off', 'value': valid_value}
+    #     elif int_value in range_time_shift:
+    #         valid_value -= (RANGE_NOTE_ON + RANGE_NOTE_OFF)
+    #         return {'type': 'time_shift', 'value': valid_value}
+    #     else:
+    #         valid_value -= (RANGE_NOTE_ON + RANGE_NOTE_OFF + RANGE_TIME_SHIFT)
+    #         return {'type': 'velocity', 'value': valid_value}
 
     @staticmethod
     def _type_check(int_value):
-        range_note_on = range(0, RANGE_NOTE_ON)
-        range_note_off = range(RANGE_NOTE_ON, RANGE_NOTE_ON+RANGE_NOTE_OFF)
-        range_time_shift = range(RANGE_NOTE_ON+RANGE_NOTE_OFF,RANGE_NOTE_ON+RANGE_NOTE_OFF+RANGE_TIME_SHIFT)
+        range_note_on = np.arange(0, RANGE_NOTE_ON)
+        range_note_off = np.arange(RANGE_NOTE_ON, RANGE_NOTE_ON + RANGE_NOTE_OFF)
+        range_time_shift = np.arange(RANGE_NOTE_ON + RANGE_NOTE_OFF, RANGE_NOTE_ON + RANGE_NOTE_OFF + RANGE_TIME_SHIFT)
+        range_velocity = np.arange(RANGE_NOTE_ON + RANGE_NOTE_OFF + RANGE_TIME_SHIFT, RANGE_NOTE_ON + RANGE_NOTE_OFF + RANGE_TIME_SHIFT + RANGE_VEL)
 
         valid_value = int_value
 
-        if int_value in range_note_on:
+        if np.any(int_value == range_note_on):
             return {'type': 'note_on', 'value': valid_value}
-        elif int_value in range_note_off:
+        elif np.any(int_value == range_note_off):
             valid_value -= RANGE_NOTE_ON
             return {'type': 'note_off', 'value': valid_value}
-        elif int_value in range_time_shift:
+        elif np.any(int_value == range_time_shift):
             valid_value -= (RANGE_NOTE_ON + RANGE_NOTE_OFF)
             return {'type': 'time_shift', 'value': valid_value}
         else:
             valid_value -= (RANGE_NOTE_ON + RANGE_NOTE_OFF + RANGE_TIME_SHIFT)
             return {'type': 'velocity', 'value': valid_value}
-
 
 def _divide_note(notes):
     result_array = []

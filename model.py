@@ -256,6 +256,7 @@ class MusicTransformer(keras.Model):
                 sequences = ordered[:k]
 
             decode_array = sequences[0][0]  # Choisir la séquence avec le score le plus élevé
+            decode_array = decode_array[0]
 
         else:
             decode_array = tf.constant([decode_array])
@@ -704,12 +705,12 @@ if __name__ == '__main__':
     src_mask, trg_mask, lookup_mask = utils.get_masked_with_pad_tensor(2048, src,trg)
     print(lookup_mask)
     print(src_mask)
-    mt = MusicTransformer(debug=True, embedding_dim=par.embedding_dim, vocab_size=par.vocab_size)
+    mt = MusicTransformerDecoder(debug=True, embedding_dim=par.embedding_dim, vocab_size=par.vocab_size)
     mt.save_weights('my_model.weights.h5')
     mt.load_weights('my_model.weights.h5')
-    result = mt.generate([27, 186,  43, 213, 115, 131], length=100)
+    result = mt.generate([27, 186,  43, 213, 115, 131], length=100, beam=2)
     print(result)
-    import sequence
+    # import sequence
 
-    sequence.EventSeq.from_array(result[0]).to_note_seq().to_midi_file('result.midi')
+    # sequence.EventSeq.from_array(result[0]).to_note_seq().to_midi_file('result.midi')
     pass

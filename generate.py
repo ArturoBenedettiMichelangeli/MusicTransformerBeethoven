@@ -54,7 +54,7 @@ inputs = encode_midi('/content/MusicTransformerBeethoven/dataset/midi_Beethoven/
 
 
 with gen_summary_writer.as_default():
-    result = mt.generate(inputs[:200], beam=beam, length=length, tf_board=True)
+    result = mt.generate(inputs[:200], beam=beam, length=length, tf_board=True, temperature=1.0)
 
 for i in result:
     print(i)

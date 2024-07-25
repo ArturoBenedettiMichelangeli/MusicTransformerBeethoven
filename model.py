@@ -602,14 +602,23 @@ class MusicTransformerDecoder(keras.Model):
     #         decode_array = decode_array[0]
 
     #     return decode_array.numpy()
-    
-    def generate(self, prior: list, beam=None, length=2048, tf_board=False):
+
+# temperature : Température utilisée pour ajuster la distribution des probabilités lors de l'échantillonnage.
+# Interprétation des valeurs de température :
+            
+# - **T > 1** : Une température élevée rend la distribution des probabilités plus uniforme. Les différences entre les probabilités des différents tokens sont atténuées, ce qui favorise la diversité et la créativité dans les séquences générées. Cela peut être utile pour générer des sorties plus variées mais potentiellement moins cohérentes.
+
+# - **T = 1** : La température à 1 laisse la distribution des probabilités inchangée par rapport aux logits bruts. Les probabilités sont directement basées sur les logits du modèle sans ajustement supplémentaire.
+
+# - **T < 1** : Une température basse rend la distribution des probabilités plus "pointue" ou "concentrée". Les différences entre les probabilités des tokens sont accentuées, ce qui favorise les tokens avec des logits plus élevés et rend les sélections plus déterministes. Cela peut améliorer la cohérence mais réduire la diversité des sorties.
+
+    def generate(self, prior: list, beam=None, length=2048, tf_board=False, temperature=1.0):
         prior = tf.constant([prior], dtype=tf.int32)
         decode_array = prior
 
         if beam is not None:
             k = beam
-            sequences = [(decode_array, 0.0)]  # Liste de tuples (sequence, score)
+            sequences = [(decode_array, 0.0)]  # List of tuples (sequence, score)
 
             for i in range(min(self.max_seq, length)):
                 all_candidates = []
@@ -618,14 +627,15 @@ class MusicTransformerDecoder(keras.Model):
                     _, _, look_ahead_mask = utils.get_masked_with_pad_tensor(seq.shape[1], prior, seq)
 
                     result = self.call(seq, lookup_mask=look_ahead_mask, training=False, eval=False)
-                    result = result[:, -1, :]  # Récupérer les logits du dernier token généré
-                    log_probs = tf.nn.log_softmax(result, -1)  # Utilisation de log_softmax sans condition
+                    result = result[:, -1, :]  # Get the logits of the last generated token
+                    result /= temperature  # Apply temperature
+                    log_probs = tf.nn.log_softmax(result, -1)  # Use log_softmax
 
                     top_k_log_probs, top_k_indices = tf.nn.top_k(log_probs, k)
 
                     for j in range(k):
                         candidate_seq = tf.concat([seq, tf.expand_dims([top_k_indices[0][j]], 0)], -1)
-                        candidate_score = score + top_k_log_probs[0][j].numpy()  # Ajouter le log-probabilité au score
+                        candidate_score = score + top_k_log_probs[0][j].numpy()  # Add log-probability to score
                         all_candidates.append((candidate_seq, candidate_score))
 
                     del look_ahead_mask
@@ -633,7 +643,7 @@ class MusicTransformerDecoder(keras.Model):
                 ordered = sorted(all_candidates, key=lambda tup: tup[1], reverse=True)
                 sequences = ordered[:k]
 
-            decode_array = sequences[0][0]  # Choisir la séquence avec le score le plus élevé
+            decode_array = sequences[0][0]  # Choose the sequence with the highest score
 
         else:
             for i in Bar('generating').iter(range(min(self.max_seq, length))):
@@ -646,17 +656,21 @@ class MusicTransformerDecoder(keras.Model):
                 if tf_board:
                     tf.summary.image('generate_vector', tf.expand_dims(result, -1), i)
 
+                result = result[:, -1, :]  # Get the logits of the last generated token
+
                 u = random.uniform(0, 1)
                 if u > 1:
-                    result = tf.argmax(result[:, -1], -1)
+                    # No temperature adjustment needed for argmax
+                    result = tf.argmax(result, -1)
                     result = tf.cast(result, tf.int32)
-                    decode_array = tf.concat([decode_array, tf.expand_dims(result, -1)], -1)
                 else:
-                    pdf = tfp.distributions.Categorical(probs=result[:, -1])
+                    result /= temperature  # Apply temperature before sampling
+                    pdf = tfp.distributions.Categorical(logits=result)  # Use logits
                     result = pdf.sample(1)
                     result = tf.transpose(result, (1, 0))
                     result = tf.cast(result, tf.int32)
-                    decode_array = tf.concat([decode_array, result], -1)
+
+                decode_array = tf.concat([decode_array, tf.expand_dims(result, -1)], -1)
 
                 del look_ahead_mask
 

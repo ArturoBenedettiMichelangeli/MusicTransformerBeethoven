@@ -479,12 +479,11 @@ class MusicTransformerDecoder(keras.Model):
         return [loss.numpy()] + [perplexity.numpy()] + result_metrics, w
 
 
+    def save(self, filepath, overwrite=True, include_optimizer=False, save_format=None):
+        config_path = filepath+'/'+'config.json'
+        ckpt_path = filepath+'/ckpt'
 
-    def save(self, filepath, overwrite=True, include_optimizer=False, save_format='h5'):
-        config_path = filepath + '/' + 'config.json'
-        ckpt_path = filepath + '/' + 'ckpt.h5'  # Utilisation du format .h5
-
-        self.save_weights(ckpt_path, save_format=save_format)  # Sauvegarde au format HDF5
+        self.save_weights(ckpt_path, save_format='tf')
         with open(config_path, 'w') as f:
             json.dump(self.get_config(), f)
         return
@@ -495,10 +494,10 @@ class MusicTransformerDecoder(keras.Model):
             config = json.load(f)
         self.__load_config(config)
 
-    def load_ckpt_file(self, filepath, ckpt_name='ckpt.h5'):  # Utilisation du format .h5
+    def load_ckpt_file(self, filepath, ckpt_name='ckpt'):
         ckpt_path = filepath + '/' + ckpt_name
         try:
-            self.load_weights(ckpt_path)  # Chargement au format HDF5
+            self.load_weights(ckpt_path)
         except FileNotFoundError:
             print("[Warning] model will be initialized...")
 

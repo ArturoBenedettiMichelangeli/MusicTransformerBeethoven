@@ -157,7 +157,6 @@ if pickle_dir != "/content/MusicTransformerBeethoven/dataset/preprocessed_midi_m
                 print('Epoch/Batch: {}/{}'.format(e, b))
                 print('Train >>>> Loss: {:6.6}, Perplexity: {:6.6}, Accuracy: {}'.format(result_metrics[0], result_metrics[1], result_metrics[2]))
                 print('Eval >>>> Loss: {:6.6}, Perplexity: {:6.6}, Accuracy: {}'.format(eval_result_metrics[0], eval_result_metrics[1], eval_result_metrics[2]))
-
 else: # maestro dataset only
     print("\n\nMAESTRO TRAINING\n\n")
     idx = 0

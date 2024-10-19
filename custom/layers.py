@@ -93,7 +93,7 @@ class DynamicPositionEmbedding(keras.layers.Layer):
     def call(self, inputs, **kwargs):
         return tf.add(inputs, self.positional_embedding[:,:inputs.shape[1],:])
 
-
+#Base mechanism of attention in one head (not used in Music Transformer)
 class BaselineAttention(keras.layers.Layer):
     def __init__(self, h, d, max_seq=2048, **kwargs):
         super().__init__(**kwargs)
@@ -180,7 +180,7 @@ class RelativeGlobalAttention(keras.layers.Layer):
         self.shape_q = input_shape[0][1]
         self.shape_k = input_shape[1][1]
         # self.max_seq = max(input_shape[0][1], input_shape[1][1], input_shape[2][1])
-        self.E = self.add_weight('emb', shape=[self.max_seq, int(self.dh)])
+        self.E = self.add_weight(name='emb', shape=(self.max_seq, int(self.dh)), initializer='random_normal')
 
     def call(self, inputs, mask=None, **kwargs):
         """

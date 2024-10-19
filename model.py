@@ -483,7 +483,7 @@ class MusicTransformerDecoder(keras.Model):
         config_path = filepath+'/'+'config.json'
         ckpt_path = filepath+'/ckpt'
 
-        self.save_weights(ckpt_path, save_format='tf')
+        self.save_weights(ckpt_path + '.weights.h5')
         with open(config_path, 'w') as f:
             json.dump(self.get_config(), f)
         return

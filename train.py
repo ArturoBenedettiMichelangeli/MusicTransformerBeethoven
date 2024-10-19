@@ -44,7 +44,7 @@ num_layer = args.num_layers
 
 
 # load data
-dataset = Data(pickle_dir)
+dataset = Data(pickle_dir, beethoven_dir="/content/MusicTransformerBeethoven/dataset/preprocessed_midi_beethoven")
 print(dataset)
 
 
@@ -91,7 +91,7 @@ mt = MusicTransformerDecoder(
             vocab_size=par.vocab_size,
             num_layer=num_layer,
             max_seq=max_seq,
-            dropout=0.4,
+            dropout=0.2,
             debug=False, loader_path=load_path)
 mt.compile(optimizer=opt, loss=callback.transformer_dist_train_loss)
 
@@ -100,8 +100,12 @@ mt.compile(optimizer=opt, loss=callback.transformer_dist_train_loss)
 current_time = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
 train_log_dir = 'logs/mt_decoder/'+current_time+'/train'
 eval_log_dir = 'logs/mt_decoder/'+current_time+'/eval'
+test_log_dir = 'logs/mt_decoder/'+current_time+'/test'
+
 train_summary_writer = tf.summary.create_file_writer(train_log_dir)
 eval_summary_writer = tf.summary.create_file_writer(eval_log_dir)
+test_summary_writer = tf.summary.create_file_writer(test_log_dir)
+
 
 
 #define frequency of reports based on the dataset size
@@ -124,14 +128,14 @@ if pickle_dir != "/content/MusicTransformerBeethoven/dataset/preprocessed_midi_m
         mt.reset_metrics()
         for b in range(len(dataset.files) // batch_size):
             try:
-                batch_x, batch_y, sample_weights_batch = dataset.slide_seq2seq_batch_with_weights(batch_size, max_seq)
+                batch_x, batch_y, sample_weights_batch = dataset.slide_seq2seq_batch_with_weights(batch_size, max_seq, 'train_finetuning')
             except:
                 continue
 
             result_metrics = mt.train_on_batch(batch_x, batch_y, sample_weight=sample_weights_batch)
 
             if b % freq == 0:
-                eval_x, eval_y, eval_sample_weights = dataset.slide_seq2seq_batch_with_weights(batch_size, max_seq, 'eval')
+                eval_x, eval_y, eval_sample_weights = dataset.slide_seq2seq_batch_with_weights(batch_size, max_seq, 'eval_finetuning')
                 eval_result_metrics, weights = mt.evaluate(eval_x, eval_y, sample_weight=eval_sample_weights)
 
                 mt.save(save_path)
@@ -151,12 +155,24 @@ if pickle_dir != "/content/MusicTransformerBeethoven/dataset/preprocessed_midi_m
                     tf.summary.scalar('loss', eval_result_metrics[0], step=idx)
                     tf.summary.scalar('perplexity', eval_result_metrics[1], step=idx)
                     tf.summary.scalar('accuracy', eval_result_metrics[2], step=idx)
+                
+                # Test set evaluation
+                test_x, test_y, test_sample_weights = dataset.slide_seq2seq_batch_with_weights(batch_size, max_seq, 'test_finetuning')
+                test_result_metrics, _ = mt.evaluate(test_x, test_y, sample_weight=test_sample_weights)
+
+                # Test metrics logging
+                with test_summary_writer.as_default():
+                    tf.summary.scalar('loss', test_result_metrics[0], step=idx)
+                    tf.summary.scalar('perplexity', test_result_metrics[1], step=idx)
+                    tf.summary.scalar('accuracy', test_result_metrics[2], step=idx)
 
                 idx += 1
                 print('\n====================================================')
                 print('Epoch/Batch: {}/{}'.format(e, b))
                 print('Train >>>> Loss: {:6.6}, Perplexity: {:6.6}, Accuracy: {}'.format(result_metrics[0], result_metrics[1], result_metrics[2]))
                 print('Eval >>>> Loss: {:6.6}, Perplexity: {:6.6}, Accuracy: {}'.format(eval_result_metrics[0], eval_result_metrics[1], eval_result_metrics[2]))
+                print('Test  >>>> Loss: {:6.6}, Perplexity: {:6.6}, Accuracy: {}'.format(test_result_metrics[0], test_result_metrics[1], test_result_metrics[2]))
+
 else: # maestro dataset only
     print("\n\nMAESTRO TRAINING\n\n")
     idx = 0
@@ -165,17 +181,22 @@ else: # maestro dataset only
         mt.reset_metrics()
         for b in range(len(dataset.files) // batch_size):
             try:
-                batch_x, batch_y = dataset.slide_seq2seq_batch(batch_size, max_seq)
+                batch_x, batch_y = dataset.slide_seq2seq_batch(batch_size, max_seq, 'train_pretraining')
             except:
                 continue
 
+            # Train
             result_metrics = mt.train_on_batch(batch_x, batch_y)
 
             if b % freq == 0:
-                eval_x, eval_y = dataset.slide_seq2seq_batch(batch_size, max_seq, 'eval')
+                # Evaluation on eval set
+                eval_x, eval_y = dataset.slide_seq2seq_batch(batch_size, max_seq, 'eval_pretraining')
                 eval_result_metrics, weights = mt.evaluate(eval_x, eval_y)
 
+                # Save model
                 mt.save(save_path)
+
+                # Train metrics logging
                 with train_summary_writer.as_default():
                     if b == 0:
                         tf.summary.histogram("target_analysis", batch_y, step=e)
@@ -185,6 +206,7 @@ else: # maestro dataset only
                     tf.summary.scalar('perplexity', result_metrics[1], step=idx)
                     tf.summary.scalar('accuracy', result_metrics[2], step=idx)
 
+                # Eval metrics logging
                 with eval_summary_writer.as_default():
                     if b == 0:
                         mt.sanity_check(eval_x, eval_y, step=e)
@@ -193,8 +215,20 @@ else: # maestro dataset only
                     tf.summary.scalar('perplexity', eval_result_metrics[1], step=idx)
                     tf.summary.scalar('accuracy', eval_result_metrics[2], step=idx)
 
+                # Test set evaluation
+                test_x, test_y = dataset.slide_seq2seq_batch(batch_size, max_seq, 'test_pretraining')
+                test_result_metrics, _ = mt.evaluate(test_x, test_y)
+
+                # Test metrics logging
+                with test_summary_writer.as_default():  # Ensure you have a test summary writer initialized like train/eval
+                    tf.summary.scalar('loss', test_result_metrics[0], step=idx)
+                    tf.summary.scalar('perplexity', test_result_metrics[1], step=idx)
+                    tf.summary.scalar('accuracy', test_result_metrics[2], step=idx)
+
+                # Print metrics
                 idx += 1
                 print('\n====================================================')
                 print('Epoch/Batch: {}/{}'.format(e, b))
                 print('Train >>>> Loss: {:6.6}, Perplexity: {:6.6}, Accuracy: {}'.format(result_metrics[0], result_metrics[1], result_metrics[2]))
-                print('Eval >>>> Loss: {:6.6}, Perplexity: {:6.6}, Accuracy: {}'.format(eval_result_metrics[0], eval_result_metrics[1], eval_result_metrics[2]))
+                print('Eval  >>>> Loss: {:6.6}, Perplexity: {:6.6}, Accuracy: {}'.format(eval_result_metrics[0], eval_result_metrics[1], eval_result_metrics[2]))
+                print('Test  >>>> Loss: {:6.6}, Perplexity: {:6.6}, Accuracy: {}'.format(test_result_metrics[0], test_result_metrics[1], test_result_metrics[2]))

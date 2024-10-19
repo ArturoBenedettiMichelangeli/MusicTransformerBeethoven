@@ -10,17 +10,53 @@ from pathlib import Path
 
 
 class Data:
-    def __init__(self, dir_path):
+    # def __init__(self, dir_path):
+    #     self.files = list(utils.find_files_by_extensions(dir_path, ['.pickle']))
+    #     self.file_dict = {
+    #         'train': self.files[:int(len(self.files) * 0.8)],
+    #         'eval': self.files[int(len(self.files) * 0.8): int(len(self.files) * 0.9)],
+    #         'test': self.files[int(len(self.files) * 0.9):],
+    #     }
+    #     self._seq_file_name_idx = 0
+    #     self._seq_idx = 0
+    #     self.sample_weights = self.weights_init(dir_path)
+    #     pass
+
+    def __init__(self, dir_path, beethoven_dir=None):
+        """
+        Args:
+        - dir_path (str): chemin du dataset général pour le pré-entrainement.
+        - beethoven_dir (str): chemin des sonates de Beethoven pour l'ensemble test.
+        """
         self.files = list(utils.find_files_by_extensions(dir_path, ['.pickle']))
+        random.shuffle(self.files)  # Mélanger aléatoirement les fichiers généraux
+        
+        beethoven_files = list(utils.find_files_by_extensions(beethoven_dir, ['.pickle']))
+        random.shuffle(beethoven_files)  # Mélanger les sonates
+
+        num_test_files = int(len(beethoven_files) * 0.1)
+        # 10% des sonates de Beethoven pour le test en pré-entraînement
+        test_files_pretraining = beethoven_files[:num_test_files]
+        # 10% des sonates de Beethoven pour le test en phase d'affinage
+        test_files_finetuning = beethoven_files[num_test_files:num_test_files * 0.2]
+        # 80% des sonates de Beethoven pour l'entraînement en phase d'affinage
+        beethoven_training = beethoven_files[num_test_files:num_test_files * 0.2:]
+
+        # Répartition des fichiers généraux (self.files) en train et eval
         self.file_dict = {
-            'train': self.files[:int(len(self.files) * 0.8)],
-            'eval': self.files[int(len(self.files) * 0.8): int(len(self.files) * 0.9)],
-            'test': self.files[int(len(self.files) * 0.9):],
+            'train_pretraining': self.files[:int(len(self.files) * 0.8)],  # 80% des fichiers généraux pour train lors du pré-entrainement
+            'eval_pretraining': self.files[int(len(self.files) * 0.8):],    # 20% des fichiers généraux pour eval lors du pré-entrainement
+            'train_finetuning': beethoven_training[:int(len(beethoven_training) * 0.8)],  # 80% des fichiers généraux pour train lors de l'affinage
+            'eval_finetuning': beethoven_training[int(len(beethoven_training) * 0.8):],    # 20% des fichiers généraux pour eval lors de l'affinage
+            'test_pretraining': test_files_pretraining,  # Ensemble de test composé de sonates de Beethoven
+            'test_finetuning': test_files_finetuning
         }
+
         self._seq_file_name_idx = 0
         self._seq_idx = 0
-        self.sample_weights = self.weights_init(dir_path)
+        # self.sample_weights = self.weights_init(dir_path)
         pass
+
 
     def __repr__(self):
         return '<class Data has "'+str(len(self.files))+'" files>'
@@ -101,7 +137,7 @@ class Data:
         else:
             return None
 
-    def batch(self, batch_size, length, mode='train'):
+    def batch(self, batch_size, length, mode):
 
         batch_files = random.sample(self.file_dict[mode], k=batch_size)
 
@@ -111,25 +147,25 @@ class Data:
         ]
         return np.array(batch_data), batch_files  # batch_size, seq_len
 
-    def seq2seq_batch(self, batch_size, length, mode='train'):
+    def seq2seq_batch(self, batch_size, length, mode):
         data = self.batch(batch_size, length * 2, mode)
         x = data[:, :length]
         y = data[:, length:]
         return x, y
 
-    def smallest_encoder_batch(self, batch_size, length, mode='train'):
+    def smallest_encoder_batch(self, batch_size, length, mode):
         data = self.batch(batch_size, length * 2, mode)
         x = data[:, :length//100]
         y = data[:, length//100:length//100+length]
         return x, y
 
-    def slide_seq2seq_batch(self, batch_size, length, mode='train'):
+    def slide_seq2seq_batch(self, batch_size, length, mode):
         data, _ = self.batch(batch_size, length+1, mode)
         x = data[:, :-1]
         y = data[:, 1:]
         return x, y
 
-    def slide_seq2seq_batch_with_weights(self, batch_size, length, mode='train'):
+    def slide_seq2seq_batch_with_weights(self, batch_size, length, mode):
         data, batch_files = self.batch(batch_size, length+1, mode)
         x = data[:, :-1]
         y = data[:, 1:]

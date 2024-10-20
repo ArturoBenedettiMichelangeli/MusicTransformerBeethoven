@@ -677,7 +677,7 @@ class MusicTransformerDecoder(keras.Model):
 
     def reset_metrics(self):
         for metric in self.custom_metrics:
-            metric.reset_states()
+            metric.reset_state()
         return
 
     @staticmethod

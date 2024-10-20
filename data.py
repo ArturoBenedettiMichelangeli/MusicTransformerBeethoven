@@ -34,13 +34,19 @@ class Data:
         beethoven_files = list(utils.find_files_by_extensions(beethoven_dir, ['.pickle']))
         random.shuffle(beethoven_files)  # Mélanger les sonates
 
-        num_test_files = int(len(beethoven_files) * 0.1)
+        # Calculate the number of Beethoven files for testing and training
+        num_test_files = int(len(beethoven_files) * 0.1)  # 10% for pre-training test
+        num_finetuning_files = len(beethoven_files) - num_test_files  # Remaining for fine-tuning
+        
         # 10% des sonates de Beethoven pour le test en pré-entraînement
         test_files_pretraining = beethoven_files[:num_test_files]
-        # 10% des sonates de Beethoven pour le test en phase d'affinage
-        test_files_finetuning = beethoven_files[num_test_files:num_test_files * 0.2]
-        # 80% des sonates de Beethoven pour l'entraînement en phase d'affinage
-        beethoven_training = beethoven_files[num_test_files:num_test_files * 0.2:]
+        
+        # 10% des sonates restantes pour le test en phase d'affinage
+        test_files_finetuning = beethoven_files[num_test_files:num_test_files + int(num_finetuning_files * 0.1)]
+        
+        # 80% des sonates restantes pour l'entraînement en phase d'affinage
+        beethoven_training = beethoven_files[num_test_files + int(num_finetuning_files * 0.1):]
+
 
         # Répartition des fichiers généraux (self.files) en train et eval
         self.file_dict = {

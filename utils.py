@@ -1,6 +1,6 @@
 import os
 import numpy as np
-from deprecated.sequence import EventSeq, ControlSeq
+from sequence import EventSeq, ControlSeq
 import tensorflow as tf
 import params as par
 

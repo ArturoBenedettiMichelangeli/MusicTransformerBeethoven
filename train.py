@@ -128,15 +128,21 @@ if pickle_dir != "/content/MusicTransformerBeethoven/dataset/preprocessed_midi_m
         mt.reset_metrics()
         for b in range(len(dataset.files) // batch_size):
             try:
-                batch_x, batch_y, sample_weights_batch = dataset.slide_seq2seq_batch_with_weights(batch_size, max_seq, 'train_finetuning')
+                #batch_x, batch_y, sample_weights_batch = dataset.slide_seq2seq_batch_with_weights(batch_size, max_seq, 'train_finetuning')
+                batch_x, batch_y = dataset.slide_seq2seq_batch(batch_size, max_seq, 'train_finetuning')
+            
             except:
                 continue
 
-            result_metrics = mt.train_on_batch(batch_x, batch_y, sample_weight=sample_weights_batch)
+            #result_metrics = mt.train_on_batch(batch_x, batch_y, sample_weight=sample_weights_batch)
+            result_metrics = mt.train_on_batch(batch_x, batch_y)
 
             if b % freq == 0:
-                eval_x, eval_y, eval_sample_weights = dataset.slide_seq2seq_batch_with_weights(batch_size, max_seq, 'eval_finetuning')
-                eval_result_metrics, weights = mt.evaluate(eval_x, eval_y, sample_weight=eval_sample_weights)
+                #eval_x, eval_y, eval_sample_weights = dataset.slide_seq2seq_batch_with_weights(batch_size, max_seq, 'eval_finetuning')
+                eval_x, eval_y = dataset.slide_seq2seq_batch(batch_size, max_seq, 'eval_finetuning')
+
+                #eval_result_metrics, weights = mt.evaluate(eval_x, eval_y, sample_weight=eval_sample_weights)
+                eval_result_metrics, _ = mt.evaluate(eval_x, eval_y)
 
                 mt.save(save_path)
                 with train_summary_writer.as_default():
@@ -157,8 +163,10 @@ if pickle_dir != "/content/MusicTransformerBeethoven/dataset/preprocessed_midi_m
                     tf.summary.scalar('accuracy', eval_result_metrics[2], step=idx)
                 
                 # Test set evaluation
-                test_x, test_y, test_sample_weights = dataset.slide_seq2seq_batch_with_weights(batch_size, max_seq, 'test_finetuning')
-                test_result_metrics, _ = mt.evaluate(test_x, test_y, sample_weight=test_sample_weights)
+                #test_x, test_y, test_sample_weights = dataset.slide_seq2seq_batch_with_weights(batch_size, max_seq, 'test_finetuning')
+                test_x, test_y = dataset.slide_seq2seq_batch(batch_size, max_seq, 'test_finetuning')
+
+                test_result_metrics, _ = mt.evaluate(test_x, test_y)
 
                 # Test metrics logging
                 with test_summary_writer.as_default():

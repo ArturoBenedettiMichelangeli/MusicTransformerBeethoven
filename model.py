@@ -119,7 +119,7 @@ class MusicTransformer(keras.Model):
         config_path = filepath+'/'+'config.json'
         ckpt_path = filepath+'/ckpt'
 
-        self.save_weights(ckpt_path, save_format='tf')
+        self.save_weights(ckpt_path + '.weights.h5')
         with open(config_path, 'w') as f:
             json.dump(self.get_config(), f)
         return
@@ -131,7 +131,7 @@ class MusicTransformer(keras.Model):
         self.__load_config(config)
 
     def load_ckpt_file(self, filepath, ckpt_name='ckpt'):
-        ckpt_path = filepath + '/' + ckpt_name
+        ckpt_path = filepath + '/' + ckpt_name + '.weights.h5'  # Add .weights.h5 extension
         try:
             self.load_weights(ckpt_path)
         except FileNotFoundError:
@@ -495,7 +495,7 @@ class MusicTransformerDecoder(keras.Model):
         self.__load_config(config)
 
     def load_ckpt_file(self, filepath, ckpt_name='ckpt'):
-        ckpt_path = filepath + '/' + ckpt_name
+        ckpt_path = filepath + '/' + ckpt_name + '.weights.h5'  # Add .weights.h5 extension
         try:
             self.load_weights(ckpt_path)
         except FileNotFoundError:

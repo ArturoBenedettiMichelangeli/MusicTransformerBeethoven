@@ -231,9 +231,9 @@ def encode_midi(file_path):
 
     for inst in mid.instruments:
         inst_notes = inst.notes
-        # ctrl.number is the number of sustain control. If you want to know abour the number type of control,
+        # ctrl.number is the number of sustain control. If you want to know about the number type of control,
         # see https://www.midi.org/specifications-old/item/table-3-control-change-messages-data-bytes-2
-        ctrls = _control_preprocess([ctrl for ctrl in inst.control_changes if ctrl.number == 64])
+        ctrls = _control_preprocess([ctrl for ctrl in inst.control_changes if ctrl.number == 64]) #seuls les control_changes concernant la sustain pedal (ctrl.number == 64) seront gardées
         notes += _note_preprocess(ctrls, inst_notes)
 
     dnotes = _divide_note(notes)
@@ -274,14 +274,43 @@ def decode_midi(idx_array, file_path=None):
 
 
 if __name__ == '__main__':
-    encoded = encode_midi('bin/ADIG04.mid')
-    print(encoded)
-    decided = decode_midi(encoded,file_path='bin/test.mid')
 
-    ins = pretty_midi.PrettyMIDI('bin/ADIG04.mid')
-    print(ins)
-    print(ins.instruments[0])
-    for i in ins.instruments:
-        print(i.control_changes)
-        print(i.notes)
+    encoded = encode_midi('/home/aldo/standardized_sonate_14.mid')
+    print(encoded[-100:])
+    decided = decode_midi(encoded,file_path='/home/aldo/test.mid')
+
+    # ins = pretty_midi.PrettyMIDI('bin/ADIG04.mid')
+    # print(ins)
+    # print(ins.instruments[0])
+    # for i in ins.instruments:
+    #     print(i.control_changes)
+    #     print(i.notes)
+
+
+    # # Load MIDI file
+    # file_path = '/home/aldo/standardized_sonate_14.mid'
+    # mid = pretty_midi.PrettyMIDI(midi_file=file_path)
+
+    # # Get instruments and notes
+    # for instrument in mid.instruments:
+    #     print(f"Instrument: {instrument.name}, Program: {instrument.program}")
+    #     for note in instrument.notes:
+    #         print(f"Note: {note.pitch}, Start: {note.start}, End: {note.end}, Velocity: {note.velocity}")
+
+    # # # Get tempo changes
+    # # tempo_changes = mid.get_tempo_changes()
+    # # print(f"Tempo changes: {tempo_changes}")
+
+    # # Get time signature changes
+    # for time_signature in mid.time_signature_changes:
+    #     print(f"Time Signature: {time_signature.numerator}/{time_signature.denominator} at time {time_signature.time}")
+
+    # for key_signature in mid.key_signature_changes:
+    #     print(f"Key Signature: {key_signature.key_number}, Time: {key_signature.time}")
+
+    # # beat_times = mid.get_beats()
+    # # print(f"Beat times: {beat_times}")
+
+    # duration = mid.get_end_time()
+    # print(f"Total duration: {duration} seconds")
 

@@ -426,6 +426,8 @@ class MusicTransformerDecoder(keras.Model):
         if self._debug:
             print('train step finished')
 
+        cross_entropy = self.loss(y, predictions)
+
         # Calculating the loss with sample weights if provided
         if sample_weight is not None:
             weighted_losses = cross_entropy * sample_weight[:, tf.newaxis]

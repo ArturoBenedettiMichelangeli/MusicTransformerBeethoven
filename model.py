@@ -324,6 +324,27 @@ class MusicTransformer(keras.Model):
             metric.reset_states()
         return
 
+#------------------------------------------- définition d'une classe Perplexity() qui sera suivie par Keras comme une métrique (voir _set_metrics())
+class Perplexity(tf.keras.metrics.Metric):
+    def __init__(self, name='perplexity', **kwargs):
+        super().__init__(name=name, **kwargs)
+        self.total_loss = self.add_weight(name='total_loss', initializer='zeros')
+        self.count = self.add_weight(name='count', initializer='zeros')
+
+    def update_state(self, y_true, y_pred, sample_weight=None):
+        loss = tf.keras.losses.sparse_categorical_crossentropy(y_true, y_pred, from_logits=True)
+        loss = tf.reduce_mean(loss)
+        self.total_loss.assign_add(loss)
+        self.count.assign_add(1.0)
+
+    def result(self):
+        return tf.exp(self.total_loss / self.count)
+
+    def reset_states(self):
+        self.total_loss.assign(0.0)
+        self.count.assign(0.0)
+#---------------------------------------------
+
 
 class MusicTransformerDecoder(keras.Model):
     def __init__(self, embedding_dim=256, vocab_size=388+2, num_layer=6,
@@ -405,10 +426,6 @@ class MusicTransformerDecoder(keras.Model):
         if self._debug:
             print('train step finished')
 
-        # Calculating perplexity
-        cross_entropy = self.loss_value
-        perplexity = tf.exp(tf.reduce_mean(cross_entropy))  # Compute mean perplexity over batch
-
         # Calculating the loss with sample weights if provided
         if sample_weight is not None:
             weighted_losses = cross_entropy * sample_weight[:, tf.newaxis]
@@ -421,7 +438,7 @@ class MusicTransformerDecoder(keras.Model):
         for metric in self.custom_metrics:
             result_metric.append(metric(y, predictions).numpy())
 
-        return [loss.numpy(), perplexity.numpy()]+result_metric
+        return [loss.numpy()]+result_metric
 
 
 
@@ -463,8 +480,6 @@ class MusicTransformerDecoder(keras.Model):
         predictions, w = self.call(x, lookup_mask=look_ahead_mask, training=False, eval=True)
 
         cross_entropy = self.loss(y, predictions)
-        
-        perplexity = tf.exp(tf.reduce_mean(cross_entropy))
 
         if sample_weight is not None:
             weighted_losses = cross_entropy * sample_weight[:, tf.newaxis]
@@ -476,7 +491,7 @@ class MusicTransformerDecoder(keras.Model):
         for metric in self.custom_metrics:
             result_metrics.append(metric(y, tf.nn.softmax(predictions)).numpy())
 
-        return [loss.numpy()] + [perplexity.numpy()] + result_metrics, w
+        return [loss.numpy()] + result_metrics, w
 
 
     def save(self, filepath, overwrite=True, include_optimizer=False, save_format=None):
@@ -665,7 +680,8 @@ class MusicTransformerDecoder(keras.Model):
 
     def _set_metrics(self):
         accuracy = keras.metrics.SparseCategoricalAccuracy()
-        self.custom_metrics = [accuracy]
+        perplexity = Perplexity()
+        self.custom_metrics = [accuracy, perplexity]
 
     def __load_config(self, config):
         self._debug = config['debug']

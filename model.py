@@ -681,7 +681,7 @@ class MusicTransformerDecoder(keras.Model):
     def _set_metrics(self):
         accuracy = keras.metrics.SparseCategoricalAccuracy()
         perplexity = Perplexity()
-        self.custom_metrics = [accuracy, perplexity]
+        self.custom_metrics = [perplexity, accuracy]
 
     def __load_config(self, config):
         self._debug = config['debug']

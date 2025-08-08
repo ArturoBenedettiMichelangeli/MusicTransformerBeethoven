@@ -327,7 +327,7 @@ class DecoderLayer(keras.layers.Layer):
         if encode_out is None:
             attn_out2, aw2 = self.rga2([out1, out1, out1], mask=mask)
         else:
-            attn_out2, aw2 = self.rga2([out1, encode_out, encode_out], mask=mask)
+            attn_out2, aw2 = self.rga2([out1, encode_out, encode_out], mask=cross_mask)
         attn_out2 = self.dropout2(attn_out2, training=training)
         attn_out2 = self.layernorm2(out1+attn_out2)
 

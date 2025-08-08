@@ -318,7 +318,7 @@ class DecoderLayer(keras.layers.Layer):
         self.dropout2 = keras.layers.Dropout(rate)
         self.dropout3 = keras.layers.Dropout(rate)
 
-    def call(self, x, encode_out, mask=None, lookup_mask=None, training=False, w_out=False, **kwargs):
+    def call(self, x, encode_out, lookup_mask=None, cross_mask=None, training=False, w_out=False, **kwargs):
 
         attn_out, aw1 = self.rga([x, x, x], mask=lookup_mask)
         attn_out = self.dropout1(attn_out, training=training)

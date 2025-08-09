@@ -51,11 +51,6 @@ mode = args.mode
 if mode == 'pretraining':
     dataset = Data(dir_path=args.pickle_dir, mode='pretraining')
 elif mode == 'finetuning':
-    if not args.finetuning_dir:
-        raise ValueError("Le chemin 'finetuning_dir' doit être spécifié pour le mode 'finetuning'.")
-    # Pour le fine-tuning, on peut passer un chemin bidon pour le dataset général
-    # ou modifier la classe Data pour qu'elle accepte None.
-    # L'important est de ne pas charger les fichiers.
     dataset = Data(finetuning_dir=args.pickle_dir, mode=mode)
 print(dataset)
 

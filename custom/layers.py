@@ -367,7 +367,7 @@ class Encoder(keras.layers.Layer):
         x = self.pos_encoding(x)
         x = self.dropout(x, training=training)
         for i in range(self.num_layers):
-            x, w = self.enc_layers[i](x, training=training)
+            x, w = self.enc_layers[i](x, mask=mask, training=training)
             weights.append(w)
         return x, weights  # (batch_size, input_seq_len, d_model)
 

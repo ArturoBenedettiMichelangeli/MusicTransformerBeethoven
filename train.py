@@ -163,8 +163,8 @@ if pickle_dir != "/content/MusicTransformerBeethoven/dataset/preprocessed_midi_m
     idx = 0
     #-------- Générer les ensembles de validation et de test une seule fois avant la boucle d'entraînement
     try:
-        eval_x, eval_y = dataset.slide_seq2seq_batch(len(dataset.dict_file['eval_finetuning']), max_seq, 'eval_finetuning')
-        test_x, test_y = dataset.slide_seq2seq_batch(len(dataset.dict_file['test_finetuning']), max_seq, 'test_finetuning')
+        eval_x, eval_y = dataset.slide_seq2seq_batch(len(dataset.file_dict['eval_finetuning']), max_seq, 'eval_finetuning')
+        test_x, test_y = dataset.slide_seq2seq_batch(len(dataset.file_dict['test_finetuning']), max_seq, 'test_finetuning')
         print("Fixed validation and test sets have been created.")
     except Exception as e:
         print(f"Error creating fixed validation/test sets: {e}")
@@ -234,8 +234,8 @@ else: # maestro dataset only
     idx = 0
     #-------- Générer les ensembles de validation et de test une seule fois avant la boucle d'entraînement
     try:
-        eval_x, eval_y = dataset.slide_seq2seq_batch(len(dataset.dict_file['eval_pretraining']), max_seq, 'eval_pretraining')
-        test_x, test_y = dataset.slide_seq2seq_batch(len(dataset.dict_file['test_pretraining']), max_seq, 'test_pretraining')
+        eval_x, eval_y = dataset.slide_seq2seq_batch(len(dataset.file_dict['eval_pretraining']), max_seq, 'eval_pretraining')
+        test_x, test_y = dataset.slide_seq2seq_batch(len(dataset.file_dict['test_pretraining']), max_seq, 'test_pretraining')
         print("Fixed validation and test sets have been created.")
     except Exception as e:
         print(f"Error creating fixed validation/test sets: {e}")

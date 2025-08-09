@@ -28,42 +28,54 @@ class Data:
         - dir_path (str): chemin du dataset général pour le pré-entrainement.
         - beethoven_dir (str): chemin des sonates de Beethoven pour l'ensemble test.
         """
-        self.files = list(utils.find_files_by_extensions(dir_path, ['.pickle']))
-        random.shuffle(self.files)  # Mélanger aléatoirement les fichiers généraux
-        
-        beethoven_files = list(utils.find_files_by_extensions(beethoven_dir, ['.pickle']))
-        random.shuffle(beethoven_files)  # Mélanger les sonates
+        if not os.path.exists(dir_path):
+            raise FileNotFoundError(f"Le chemin du dataset général n'existe pas : {dir_path}")
 
-        # Calculate the number of Beethoven files for testing and training
-        num_test_files = int(len(beethoven_files) * 0.1)  # 10% for pre-training test
-        num_finetuning_files = len(beethoven_files) - num_test_files  # Remaining for fine-tuning
-        
-        # 10% des sonates de Beethoven pour le test en pré-entraînement
-        test_files_pretraining = beethoven_files[:num_test_files]
-        
-        # 10% des sonates restantes pour le test en phase d'affinage
-        test_files_finetuning = beethoven_files[num_test_files:num_test_files + int(num_finetuning_files * 0.1)]
-        
-        # 80% des sonates restantes pour l'entraînement en phase d'affinage
-        beethoven_training = beethoven_files[num_test_files + int(num_finetuning_files * 0.1):]
+        # Fichiers généraux pour le pré-entraînement
+        self.general_files = list(utils.find_files_by_extensions(dir_path, ['.pickle']))
+        random.shuffle(self.general_files)
 
+        # Fichiers spécifiques pour l'affinage (Beethoven)
+        if beethoven_dir:
+            if not os.path.exists(beethoven_dir):
+                raise FileNotFoundError(f"Le chemin du dataset Beethoven n'existe pas : {beethoven_dir}")
+            self.beethoven_files = list(utils.find_files_by_extensions(beethoven_dir, ['.pickle']))
+            random.shuffle(self.beethoven_files)
+        else:
+            self.beethoven_files = []
 
-        # Répartition des fichiers généraux (self.files) en train et eval
+        # --- Découpage des ensembles de données ---
+
+        # Ensembles pour la phase de PRÉ-ENTRAÎNEMENT (avec les données générales)
+        total_general = len(self.general_files)
+        train_pre_split = int(total_general * 0.8)
+        eval_pre_split = int(total_general * 0.9) # 80% train, 10% eval, 10% test
+
         self.file_dict = {
-            'train_pretraining': self.files[:int(len(self.files) * 0.8)],  # 80% des fichiers généraux pour train lors du pré-entrainement
-            'eval_pretraining': self.files[int(len(self.files) * 0.8):],    # 20% des fichiers généraux pour eval lors du pré-entrainement
-            'train_finetuning': beethoven_training[:int(len(beethoven_training) * 0.8)],  # 80% des fichiers généraux pour train lors de l'affinage
-            'eval_finetuning': beethoven_training[int(len(beethoven_training) * 0.8):],    # 20% des fichiers généraux pour eval lors de l'affinage
-            'test_pretraining': test_files_pretraining,  # Ensemble de test composé de sonates de Beethoven
-            'test_finetuning': test_files_finetuning
+            'train_pretraining': self.general_files[:train_pre_split],
+            'eval_pretraining': self.general_files[train_pre_split:eval_pre_split],
+            'test_pretraining': self.general_files[eval_pre_split:],
         }
+        
+        # Ensembles pour la phase de FINE-TUNING (avec les données de Beethoven)
+        if self.beethoven_files:
+            total_beethoven = len(self.beethoven_files)
+            train_fine_split = int(total_beethoven * 0.8)
+            eval_fine_split = int(total_beethoven * 0.9) # 80% train, 10% eval, 10% test
 
+            self.file_dict.update({
+                'train_finetuning': self.beethoven_files[:train_fine_split],
+                'eval_finetuning': self.beethoven_files[train_fine_split:eval_fine_split],
+                'test_finetuning': self.beethoven_files[eval_fine_split:],
+            })
+        
+        # Attributs pour les itérateurs de batch (inchangés)
         self._seq_file_name_idx = 0
         self._seq_idx = 0
-        # self.sample_weights = self.weights_init(dir_path)
-        pass
-
-
+        
+        # Mise à jour de la liste des fichiers principaux (pour la boucle de training)
+        self.files = self.file_dict['train_pretraining']
+        
     def __repr__(self):
         return '<class Data has "'+str(len(self.files))+'" files>'
 

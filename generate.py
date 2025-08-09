@@ -50,7 +50,7 @@ else:
     print(">> generate with decoder wise... beam size is {}".format(beam))
     mt = MusicTransformerDecoder(loader_path=load_path)
 
-inputs = encode_midi('/content/MusicTransformerBeethoven/dataset/midi_Beethoven/sonate_32_chisamori.mid') #remplacer par le nom du fichier de départ
+inputs = encode_midi('/content/MusicTransformerBeethoven/dataset/std_midi_Beethoven/sonate_01_chisamori_standardized.mid') #remplacer par le nom du fichier de départ
 
 
 with gen_summary_writer.as_default():

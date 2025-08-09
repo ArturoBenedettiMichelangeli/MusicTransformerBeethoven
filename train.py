@@ -49,7 +49,7 @@ mode = args.mode
 
 # Instanciation de la classe Data en fonction du mode
 if mode == 'pretraining':
-    dataset = Data(dir_path=args.pickle_dir)  # Seul le dataset général est nécessaire
+    dataset = Data(dir_path=args.pickle_dir, mode='pretraining')
 elif mode == 'finetuning':
     if not args.finetuning_dir:
         raise ValueError("Le chemin 'finetuning_dir' doit être spécifié pour le mode 'finetuning'.")

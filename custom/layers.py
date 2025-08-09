@@ -189,6 +189,11 @@ class RelativeGlobalAttention(keras.layers.Layer):
         :param kwargs:
         :return: final tensor ( output of attention )
         """
+        # --- NEW CODE ---
+        if isinstance(mask, (list, tuple)):
+            # on prend juste le premier masque non None
+            mask = next((m for m in mask if m is not None), None)
+        # ----------------    
         q = inputs[0]
         q = self.Wq(q)
         q = tf.reshape(q, (q.shape[0], q.shape[1], self.h, -1))

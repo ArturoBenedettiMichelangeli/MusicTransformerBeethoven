@@ -23,27 +23,28 @@ class Data:
     #     self.sample_weights = self.weights_init(dir_path)
     #     pass
 
-    def __init__(self, dir_path, beethoven_dir=None):
+    def __init__(self, dir_path=None, finetuning_dir=None, mode='pretraining'):
         """
         Args:
         - dir_path (str): chemin du dataset général pour le pré-entrainement.
-        - beethoven_dir (str): chemin des sonates de Beethoven pour l'ensemble test.
+        - finetuning_dir (str): chemin du dataset de fine-tuning.
+        - mode (str) : 'pretraining' ou 'finetuning'
         """
-        if not os.path.exists(dir_path):
-            raise FileNotFoundError(f"Le chemin du dataset général n'existe pas : {dir_path}")
-
-        # Fichiers généraux pour le pré-entraînement
-        self.general_files = list(utils.find_files_by_extensions(dir_path, ['.pickle']))
-        random.shuffle(self.general_files)
-
-        # Fichiers spécifiques pour l'affinage (Beethoven)
-        if beethoven_dir:
-            if not os.path.exists(beethoven_dir):
-                raise FileNotFoundError(f"Le chemin du dataset Beethoven n'existe pas : {beethoven_dir}")
-            self.beethoven_files = list(utils.find_files_by_extensions(beethoven_dir, ['.pickle']))
-            random.shuffle(self.beethoven_files)
-        else:
-            self.beethoven_files = []
+        self.mode = mode
+        
+        self.general_files = []
+        if self.mode == 'pretraining' and dir_path:
+            if not os.path.exists(dir_path):
+                raise FileNotFoundError(f"Le chemin du dataset général n'existe pas : {dir_path}")
+            self.general_files = list(utils.find_files_by_extensions(dir_path, ['.pickle']))
+            random.shuffle(self.general_files)
+        
+        self.finetuning_files = []
+        if finetuning_dir:
+            if not os.path.exists(finetuning_dir):
+                raise FileNotFoundError(f"Le chemin du dataset pour l'affinage n'existe pas : {finetuning_dir}")
+            self.finetuning_files = list(utils.find_files_by_extensions(finetuning_dir, ['.pickle']))
+            random.shuffle(self.finetuning_files)
 
         # --- Découpage des ensembles de données ---
 
@@ -59,23 +60,27 @@ class Data:
         }
         
         # Ensembles pour la phase de FINE-TUNING (avec les données de Beethoven)
-        if self.beethoven_files:
-            total_beethoven = len(self.beethoven_files)
+        if self.finetuning_files:
+            total_beethoven = len(self.finetuning_files)
             train_fine_split = int(total_beethoven * 0.8)
             eval_fine_split = int(total_beethoven * 0.9) # 80% train, 10% eval, 10% test
 
             self.file_dict.update({
-                'train_finetuning': self.beethoven_files[:train_fine_split],
-                'eval_finetuning': self.beethoven_files[train_fine_split:eval_fine_split],
-                'test_finetuning': self.beethoven_files[eval_fine_split:],
+                'train_finetuning': self.finetuning_files[:train_fine_split],
+                'eval_finetuning': self.finetuning_files[train_fine_split:eval_fine_split],
+                'test_finetuning': self.finetuning_files[eval_fine_split:],
             })
         
         # Attributs pour les itérateurs de batch (inchangés)
         self._seq_file_name_idx = 0
         self._seq_idx = 0
         
-        # Mise à jour de la liste des fichiers principaux (pour la boucle de training)
-        self.files = self.file_dict['train_pretraining']
+        if self.mode == 'pretraining':
+            self.files = self.file_dict['train_pretraining']
+        elif self.mode == 'finetuning':
+            self.files = self.file_dict['train_finetuning']
+        else:
+            raise ValueError("Le mode doit être 'pretraining' ou 'finetuning'.")
         
     def __repr__(self):
         return '<class Data has "'+str(len(self.files))+'" files>'

@@ -154,7 +154,16 @@ else: #maestro dataset
 if pickle_dir != "/content/MusicTransformerBeethoven/dataset/preprocessed_midi_maestro":
     print("\n\nNOT MAESTRO TRAINING\n\n")
     idx = 0
-
+    #-------- Générer les ensembles de validation et de test une seule fois avant la boucle d'entraînement
+    try:
+        eval_x, eval_y = dataset.slide_seq2seq_batch(len(dataset.eval_files), max_seq, 'eval_finetuning')
+        test_x, test_y = dataset.slide_seq2seq_batch(len(dataset.test_files), max_seq, 'test_finetuning')
+        print("Fixed validation and test sets have been created.")
+    except Exception as e:
+        print(f"Error creating fixed validation/test sets: {e}")
+        eval_x, eval_y = None, None
+        test_x, test_y = None, None
+    #----------------------------------------
     for e in range(epochs):
         mt.reset_metrics()
         for b in range(len(dataset.files) // batch_size):
@@ -169,11 +178,12 @@ if pickle_dir != "/content/MusicTransformerBeethoven/dataset/preprocessed_midi_m
             result_metrics = mt.train_on_batch(batch_x, batch_y)
 
             if b % freq == 0:
-                #eval_x, eval_y, eval_sample_weights = dataset.slide_seq2seq_batch_with_weights(batch_size, max_seq, 'eval_finetuning')
-                eval_x, eval_y = dataset.slide_seq2seq_batch(batch_size, max_seq, 'eval_finetuning')
+                if eval_x is not None:
+                  #eval_result_metrics, weights = mt.evaluate(eval_x, eval_y, sample_weight=eval_sample_weights)
+                  eval_result_metrics, _ = mt.evaluate(eval_x, eval_y)
+                else:
+                  eval_result_metrics = [0,0,0] # Mettre des valeurs par défaut si l'ensemble n'a pas pu être créé
 
-                #eval_result_metrics, weights = mt.evaluate(eval_x, eval_y, sample_weight=eval_sample_weights)
-                eval_result_metrics, _ = mt.evaluate(eval_x, eval_y)
 
                 mt.save(save_path)
                 with train_summary_writer.as_default():
@@ -194,10 +204,10 @@ if pickle_dir != "/content/MusicTransformerBeethoven/dataset/preprocessed_midi_m
                     tf.summary.scalar('accuracy', eval_result_metrics[2], step=idx)
                 
                 # Test set evaluation
-                #test_x, test_y, test_sample_weights = dataset.slide_seq2seq_batch_with_weights(batch_size, max_seq, 'test_finetuning')
-                test_x, test_y = dataset.slide_seq2seq_batch(batch_size, max_seq, 'test_finetuning')
-
-                test_result_metrics, _ = mt.evaluate(test_x, test_y)
+                if test_x is not None:
+                    test_result_metrics, _ = mt.evaluate(test_x, test_y)
+                else:
+                    test_result_metrics = [0,0,0]
 
                 # Test metrics logging
                 with test_summary_writer.as_default():
@@ -215,7 +225,16 @@ if pickle_dir != "/content/MusicTransformerBeethoven/dataset/preprocessed_midi_m
 else: # maestro dataset only
     print("\n\nMAESTRO TRAINING\n\n")
     idx = 0
-
+    #-------- Générer les ensembles de validation et de test une seule fois avant la boucle d'entraînement
+    try:
+        eval_x, eval_y = dataset.slide_seq2seq_batch(len(dataset.eval_files), max_seq, 'eval_pretraining')
+        test_x, test_y = dataset.slide_seq2seq_batch(len(dataset.test_files), max_seq, 'test_pretraining')
+        print("Fixed validation and test sets have been created.")
+    except Exception as e:
+        print(f"Error creating fixed validation/test sets: {e}")
+        eval_x, eval_y = None, None
+        test_x, test_y = None, None
+    #----------------------------------------
     for e in range(epochs):
         mt.reset_metrics()
         for b in range(len(dataset.files) // batch_size):
@@ -229,7 +248,7 @@ else: # maestro dataset only
 
             if b % freq == 0:
                 # Evaluation on eval set
-                eval_x, eval_y = dataset.slide_seq2seq_batch(batch_size, max_seq, 'eval_pretraining')
+                
                 eval_result_metrics, weights = mt.evaluate(eval_x, eval_y)
 
                 # Save model
@@ -255,7 +274,6 @@ else: # maestro dataset only
                     tf.summary.scalar('accuracy', eval_result_metrics[2], step=idx)
 
                 # Test set evaluation
-                test_x, test_y = dataset.slide_seq2seq_batch(batch_size, max_seq, 'test_pretraining')
                 test_result_metrics, _ = mt.evaluate(test_x, test_y)
 
                 # Test metrics logging

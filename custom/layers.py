@@ -287,7 +287,7 @@ class EncoderLayer(keras.layers.Layer):
         self.dropout1 = keras.layers.Dropout(rate)
         self.dropout2 = keras.layers.Dropout(rate)
 
-    def call(self, x, mask=None, training=False, **kwargs):
+    def call(self, x, mask=None, training=False):
         attn_out, w = self.rga([x,x,x], mask)
         attn_out = self.dropout1(attn_out, training=training)
         out1 = self.layernorm1(attn_out+x)

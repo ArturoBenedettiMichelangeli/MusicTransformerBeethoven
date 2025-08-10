@@ -668,7 +668,7 @@ class MusicTransformerDecoder(keras.Model):
                     result = tf.cast(result, tf.int32)
                     decode_array = tf.concat([decode_array, tf.expand_dims(result, -1)], -1)
                 else:
-                    pdf = tfp.distributions.Categorical(probs=result[:, -1])
+                    pdf = tfp.distributions.Categorical(logits=result[:, -1])  # logits, pas probs
                     result = pdf.sample(1)
                     result = tf.transpose(result, (1, 0))
                     result = tf.cast(result, tf.int32)

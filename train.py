@@ -9,10 +9,6 @@ import argparse
 import datetime
 import sys
 import tensorflow as tf
-from tensorflow.keras.mixed_precision import set_global_policy
-
-# Pour diminuer l'allocation de mémoire
-set_global_policy('mixed_float16')
 
 tf.executing_eagerly()
 

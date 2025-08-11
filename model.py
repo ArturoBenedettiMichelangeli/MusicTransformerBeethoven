@@ -620,75 +620,75 @@ class MusicTransformerDecoder(keras.Model):
     #     return decode_array.numpy()
     
     def generate(self, prior: list, beam=None, length=2048, tf_board=False):
-    vocab_size = self.vocab_size  # Taille du vocabulaire
-    prior = tf.constant([prior], dtype=tf.int32)
-    decode_array = prior
-
-    def check_tokens(tensor, mode):
-        """Debug sécurité : vérifie si un token sort du vocabulaire"""
-        if tf.reduce_any(tensor >= vocab_size) or tf.reduce_any(tensor < 0):
-            print(f"Token hors vocabulaire détecté [{mode}] :",
-                  tensor.numpy().tolist())
-            # Correction pour éviter crash
-            tensor = tf.clip_by_value(tensor, 0, vocab_size - 1)
-        return tensor
-
-    if beam is not None:
-        k = beam
-        sequences = [(decode_array, 0.0)]  # (sequence, score)
-
-        for i in range(min(self.max_seq, length)):
-            all_candidates = []
-
-            for seq, score in sequences:
-                _, _, look_ahead_mask = utils.get_masked_with_pad_tensor(seq.shape[1], prior, seq)
-                result = self.call(seq, lookup_mask=look_ahead_mask, training=False, eval=False)
-                result = result[:, -1, :]
-                log_probs = tf.nn.log_softmax(result, -1)
-                top_k_log_probs, top_k_indices = tf.nn.top_k(log_probs, k)
-
-                for j in range(k):
-                    candidate_seq = tf.concat([seq, tf.expand_dims([top_k_indices[0][j]], 0)], -1)
-                    candidate_seq = check_tokens(candidate_seq, "beam")
-                    candidate_score = score + top_k_log_probs[0][j].numpy()
-                    all_candidates.append((candidate_seq, candidate_score))
-
+        vocab_size = self.vocab_size  # Taille du vocabulaire
+        prior = tf.constant([prior], dtype=tf.int32)
+        decode_array = prior
+    
+        def check_tokens(tensor, mode):
+            """Debug sécurité : vérifie si un token sort du vocabulaire"""
+            if tf.reduce_any(tensor >= vocab_size) or tf.reduce_any(tensor < 0):
+                print(f"Token hors vocabulaire détecté [{mode}] :",
+                      tensor.numpy().tolist())
+                # Correction pour éviter crash
+                tensor = tf.clip_by_value(tensor, 0, vocab_size - 1)
+            return tensor
+    
+        if beam is not None:
+            k = beam
+            sequences = [(decode_array, 0.0)]  # (sequence, score)
+    
+            for i in range(min(self.max_seq, length)):
+                all_candidates = []
+    
+                for seq, score in sequences:
+                    _, _, look_ahead_mask = utils.get_masked_with_pad_tensor(seq.shape[1], prior, seq)
+                    result = self.call(seq, lookup_mask=look_ahead_mask, training=False, eval=False)
+                    result = result[:, -1, :]
+                    log_probs = tf.nn.log_softmax(result, -1)
+                    top_k_log_probs, top_k_indices = tf.nn.top_k(log_probs, k)
+    
+                    for j in range(k):
+                        candidate_seq = tf.concat([seq, tf.expand_dims([top_k_indices[0][j]], 0)], -1)
+                        candidate_seq = check_tokens(candidate_seq, "beam")
+                        candidate_score = score + top_k_log_probs[0][j].numpy()
+                        all_candidates.append((candidate_seq, candidate_score))
+    
+                    del look_ahead_mask
+    
+                ordered = sorted(all_candidates, key=lambda tup: tup[1], reverse=True)
+                sequences = ordered[:k]
+    
+            decode_array = sequences[0][0]
+    
+        else:
+            for i in Bar('generating').iter(range(min(self.max_seq, length))):
+                if decode_array.shape[1] >= self.max_seq:
+                    break
+    
+                _, _, look_ahead_mask = utils.get_masked_with_pad_tensor(decode_array.shape[1], prior, decode_array)
+                result = self.call(decode_array, lookup_mask=look_ahead_mask, training=False)
+                if tf_board:
+                    tf.summary.image('generate_vector', tf.expand_dims(result, -1), i)
+    
+                u = random.uniform(0, 1)
+                if u > 1:  # Ce cas ne se produit jamais avec u in [0,1]
+                    result = tf.argmax(result[:, -1], -1)
+                    result = tf.cast(result, tf.int32)
+                    decode_array = tf.concat([decode_array, tf.expand_dims(result, -1)], -1)
+                    decode_array = check_tokens(decode_array, "greedy")
+                else:
+                    pdf = tfp.distributions.Categorical(probs=result[:, -1])
+                    result = pdf.sample(1)
+                    result = tf.transpose(result, (1, 0))
+                    result = tf.cast(result, tf.int32)
+                    decode_array = tf.concat([decode_array, result], -1)
+                    decode_array = check_tokens(decode_array, "sampling")
+    
                 del look_ahead_mask
-
-            ordered = sorted(all_candidates, key=lambda tup: tup[1], reverse=True)
-            sequences = ordered[:k]
-
-        decode_array = sequences[0][0]
-
-    else:
-        for i in Bar('generating').iter(range(min(self.max_seq, length))):
-            if decode_array.shape[1] >= self.max_seq:
-                break
-
-            _, _, look_ahead_mask = utils.get_masked_with_pad_tensor(decode_array.shape[1], prior, decode_array)
-            result = self.call(decode_array, lookup_mask=look_ahead_mask, training=False)
-            if tf_board:
-                tf.summary.image('generate_vector', tf.expand_dims(result, -1), i)
-
-            u = random.uniform(0, 1)
-            if u > 1:  # Ce cas ne se produit jamais avec u in [0,1]
-                result = tf.argmax(result[:, -1], -1)
-                result = tf.cast(result, tf.int32)
-                decode_array = tf.concat([decode_array, tf.expand_dims(result, -1)], -1)
-                decode_array = check_tokens(decode_array, "greedy")
-            else:
-                pdf = tfp.distributions.Categorical(probs=result[:, -1])
-                result = pdf.sample(1)
-                result = tf.transpose(result, (1, 0))
-                result = tf.cast(result, tf.int32)
-                decode_array = tf.concat([decode_array, result], -1)
-                decode_array = check_tokens(decode_array, "sampling")
-
-            del look_ahead_mask
-
-        decode_array = decode_array[0]
-
-    return decode_array.numpy()
+    
+            decode_array = decode_array[0]
+    
+        return decode_array.numpy()
 
     def _set_metrics(self):
         accuracy = keras.metrics.SparseCategoricalAccuracy()

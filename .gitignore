@@ -1,14 +1,20 @@
+# Le dossier 'testdata' est ignoré
 testdata
+
+# Le dossier 'data' est ignoré
 data
 
-*.midi
-*.MID
+# On a commenté les lignes qui bloquaient les fichiers MIDI
+# *.midi
+# *.MID
+
 *.pickle
 *__pycache__
 *.idea
 
 bin/
-dataset/
+# On a commenté la ligne qui bloquait le dossier 'dataset'
+# dataset/
 result/
 model/
 logs/

@@ -156,7 +156,25 @@ else: #maestro dataset
     freq = 1000
 
 
+def evaluate_in_batches(model, x, y, eval_batch_size):
+    all_metrics = []
+    for i in range(0, len(x), eval_batch_size):
+        batch_x = x[i:i + eval_batch_size]
+        batch_y = y[i:i + eval_batch_size]
 
+        if len(batch_x) > 0:
+            # La fonction evaluate de votre modèle retourne les métriques
+            # et éventuellement d'autres valeurs, comme des poids.
+            # On ne prend que les métriques ici.
+            metrics, _ = model.evaluate(batch_x, batch_y)
+            all_metrics.append(metrics)
+
+    if not all_metrics:
+        return [0.0, 0.0]  # Retourne une valeur par défaut si l'ensemble est vide
+
+    # Calculer la moyenne de chaque métrique
+    avg_metrics = [sum(m[i] for m in all_metrics) / len(all_metrics) for i in range(len(all_metrics[0]))]
+    return avg_metrics
 
 # Train Start (without maestro)
 if pickle_dir != "/content/MusicTransformerBeethoven/dataset/preprocessed_maestro":
@@ -188,7 +206,7 @@ if pickle_dir != "/content/MusicTransformerBeethoven/dataset/preprocessed_maestr
             if b % freq == 0:
                 if eval_x is not None:
                   #eval_result_metrics, weights = mt.evaluate(eval_x, eval_y, sample_weight=eval_sample_weights)
-                  eval_result_metrics, _ = mt.evaluate(eval_x, eval_y)
+                  eval_result_metrics = evaluate_in_batches(mt, eval_x, eval_y, 2)
                 else:
                   eval_result_metrics = [0,0,0] # Mettre des valeurs par défaut si l'ensemble n'a pas pu être créé
 
@@ -213,7 +231,7 @@ if pickle_dir != "/content/MusicTransformerBeethoven/dataset/preprocessed_maestr
                 
                 # Test set evaluation
                 if test_x is not None:
-                    test_result_metrics, _ = mt.evaluate(test_x, test_y)
+                    test_result_metrics = evaluate_in_batches(mt, test_x, test_y, 2)
                 else:
                     test_result_metrics = [0,0,0]
 
@@ -257,7 +275,7 @@ else: # maestro dataset only
             if b % freq == 0:
                 # Evaluation on eval set
                 
-                eval_result_metrics, weights = mt.evaluate(eval_x, eval_y)
+                eval_result_metrics = evaluate_in_batches(mt, eval_x, eval_y, 2)
 
                 # Save model
                 mt.save(save_path)
@@ -282,7 +300,7 @@ else: # maestro dataset only
                     tf.summary.scalar('accuracy', eval_result_metrics[2], step=idx)
 
                 # Test set evaluation
-                test_result_metrics, _ = mt.evaluate(test_x, test_y)
+                test_result_metrics = evaluate_in_batches(mt, test_x, test_y, 2)
 
                 # Test metrics logging
                 with test_summary_writer.as_default():  # Ensure you have a test summary writer initialized like train/eval

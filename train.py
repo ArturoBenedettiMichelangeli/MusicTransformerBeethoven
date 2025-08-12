@@ -107,9 +107,12 @@ mt = MusicTransformerDecoder(
 
 # Get a sample batch of data to build the model
 try:
-    if (pickle_dir == "/content/MusicTransformerBeethoven/dataset/preprocessed_maestro" or
-        pickle_dir == "/content/MusicTransformerBeethoven/dataset/preprocessed_maestro_transposed" or
-        pickle_dir == "/content/MusicTransformerBeethoven/dataset/preprocessed_std_beethoven_transposed"):
+    if (
+      pickle_dir == "/content/MusicTransformerBeethoven/dataset/preprocessed_maestro"
+      or pickle_dir == "/content/MusicTransformerBeethoven/dataset/preprocessed_maestro_transposed"
+      or pickle_dir == "/content/MusicTransformerBeethoven/dataset/preprocessed_std_personnalized"
+      or pickle_dir == "/content/MusicTransformerBeethoven/dataset/preprocessed_std_personnalized_transposed" # pre-training datasets only
+    ):
         sample_batch_x, _ = dataset.slide_seq2seq_batch(batch_size, max_seq, 'train_pretraining')
     else:
         sample_batch_x, _ = dataset.slide_seq2seq_batch(batch_size, max_seq, 'train_finetuning')
@@ -147,16 +150,19 @@ test_summary_writer = tf.summary.create_file_writer(test_log_dir)
 
 
 #define frequency of reports based on the dataset size
-if pickle_dir=="/content/MusicTransformerBeethoven/dataset/preprocessed_personnalized": #general (and big) dataset
+if pickle_dir=="/content/MusicTransformerBeethoven/dataset/preprocessed_maestro_transposed": #~30 000 fichiers
     freq = 1000
-elif (pickle_dir == "/content/MusicTransformerBeethoven/dataset/preprocessed_beethoven" or
-      pickle_dir == "/content/MusicTransformerBeethoven/dataset/preprocessed_First_mov" or
-      pickle_dir == "/content/MusicTransformerBeethoven/dataset/std_preprocessed_midi_Beethoven"):  # specific (and small) dataset
+elif pickle_dir=="/content/MusicTransformerBeethoven/dataset/preprocessed_std_personnalized_transposed": #~15 000 fichiers
+    freq = 500
+elif pickle_dir=="/content/MusicTransformerBeethoven/dataset/preprocessed_maestro": #1276 fichiers
     freq = 100
-elif pickle_dir == "/content/MusicTransformerBeethoven/dataset/preprocessed_std_beethoven_transposed":
-    freq = 100
-else: #maestro dataset
-    freq = 1000
+elif (pickle_dir=="/content/MusicTransformerBeethoven/dataset/preprocessed_std_personnalized" #~700 fichiers
+   or pickle_dir=="/content/MusicTransformerBeethoven/dataset/preprocessed_std_beethoven_transposed"
+     ):
+     freq = 50
+else: #32 sonates
+    freq = 4
+
 
 # Fonction pour évaluer sur l'ensemble des données sans problème de limite de GPU
 def evaluate_in_batches(model, x, y, eval_batch_size):
@@ -192,10 +198,10 @@ def run_sanity_check_on_batch(model, x, y, batch_size, step):
 
 
 # Train Start
-if (pickle_dir == "/content/MusicTransformerBeethoven/dataset/preprocessed_personnalized" 
-    or pickle_dir == "/content/MusicTransformerBeethoven/dataset/preprocessed_std_beethoven"
-    #or pickle_dir == "/content/MusicTransformerBeethoven/dataset/preprocessed_std_beethoven_transposed"
-    ):
+if (
+  pickle_dir == "/content/MusicTransformerBeethoven/dataset/preprocessed_std_beethoven"
+  or pickle_dir == "/content/MusicTransformerBeethoven/dataset/preprocessed_std_beethoven_transposed"
+):
     print("\n\nFINE TUNING\n\n")
     idx = 0
     #-------- Générer les ensembles de validation et de test une seule fois avant la boucle d'entraînement
@@ -271,7 +277,9 @@ if (pickle_dir == "/content/MusicTransformerBeethoven/dataset/preprocessed_perso
 
 elif (pickle_dir == "/content/MusicTransformerBeethoven/dataset/preprocessed_maestro"
     or pickle_dir == "/content/MusicTransformerBeethoven/dataset/preprocessed_maestro_transposed"
-    or pickle_dir == "/content/MusicTransformerBeethoven/dataset/preprocessed_std_beethoven_transposed"): # pre-training datasets only
+    or pickle_dir == "/content/MusicTransformerBeethoven/dataset/preprocessed_std_personnalized"
+    or pickle_dir == "/content/MusicTransformerBeethoven/dataset/preprocessed_std_personnalized_transposed"
+     ):
     print("\n\nPRE-TRAINING\n\n")
     idx = 0
     #-------- Générer les ensembles de validation et de test une seule fois avant la boucle d'entraînement
@@ -298,7 +306,7 @@ elif (pickle_dir == "/content/MusicTransformerBeethoven/dataset/preprocessed_mae
             if b % freq == 0:
                 # Evaluation on eval set
                 
-                eval_result_metrics = evaluate_in_batches(mt, eval_x, eval_y, eval_batch_size=2)
+                eval_result_metrics = evaluate_in_batches(mt, eval_x, eval_y, eval_batch_size=8)
 
                 # Save model
                 mt.save(save_path)

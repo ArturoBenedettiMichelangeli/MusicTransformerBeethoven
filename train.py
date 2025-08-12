@@ -108,7 +108,8 @@ mt = MusicTransformerDecoder(
 # Get a sample batch of data to build the model
 try:
     if (pickle_dir == "/content/MusicTransformerBeethoven/dataset/preprocessed_maestro" or
-        pickle_dir == "/content/MusicTransformerBeethoven/dataset/preprocessed_maestro_transposed"):
+        pickle_dir == "/content/MusicTransformerBeethoven/dataset/preprocessed_maestro_transposed" or
+        pickle_dir == "/content/MusicTransformerBeethoven/dataset/preprocessed_std_beethoven_transposed"):
         sample_batch_x, _ = dataset.slide_seq2seq_batch(batch_size, max_seq, 'train_pretraining')
     else:
         sample_batch_x, _ = dataset.slide_seq2seq_batch(batch_size, max_seq, 'train_finetuning')
@@ -132,6 +133,7 @@ mt.compile(optimizer=opt, loss=callback.transformer_dist_train_loss)
 # --- FIN DU CODE CORRIGÉ ---
 
 
+
 # define tensorboard writer
 current_time = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
 train_log_dir = 'logs/mt_decoder/'+current_time+'/train'
@@ -150,6 +152,8 @@ if pickle_dir=="/content/MusicTransformerBeethoven/dataset/preprocessed_personna
 elif (pickle_dir == "/content/MusicTransformerBeethoven/dataset/preprocessed_beethoven" or
       pickle_dir == "/content/MusicTransformerBeethoven/dataset/preprocessed_First_mov" or
       pickle_dir == "/content/MusicTransformerBeethoven/dataset/std_preprocessed_midi_Beethoven"):  # specific (and small) dataset
+    freq = 100
+elif pickle_dir == "/content/MusicTransformerBeethoven/dataset/preprocessed_std_beethoven_transposed":
     freq = 100
 else: #maestro dataset
     freq = 1000
@@ -187,9 +191,12 @@ def run_sanity_check_on_batch(model, x, y, batch_size, step):
         print("Avertissement : L'ensemble de validation est vide pour le sanity check.")
 
 
-# Train Start (without maestro)
-if pickle_dir != "/content/MusicTransformerBeethoven/dataset/preprocessed_maestro":
-    print("\n\nNOT MAESTRO TRAINING\n\n")
+# Train Start
+if (pickle_dir == "/content/MusicTransformerBeethoven/dataset/preprocessed_personnalized" 
+    or pickle_dir == "/content/MusicTransformerBeethoven/dataset/preprocessed_std_beethoven"
+    #or pickle_dir == "/content/MusicTransformerBeethoven/dataset/preprocessed_std_beethoven_transposed"
+    ):
+    print("\n\nFINE TUNING\n\n")
     idx = 0
     #-------- Générer les ensembles de validation et de test une seule fois avant la boucle d'entraînement
     try:
@@ -262,8 +269,10 @@ if pickle_dir != "/content/MusicTransformerBeethoven/dataset/preprocessed_maestr
                 print('Eval >>>> Loss: {:6.6}, Perplexity: {:6.6}, Accuracy: {}'.format(eval_result_metrics[0], eval_result_metrics[1], eval_result_metrics[2]))
                 print('Test  >>>> Loss: {:6.6}, Perplexity: {:6.6}, Accuracy: {}'.format(test_result_metrics[0], test_result_metrics[1], test_result_metrics[2]))
 
-else: # maestro dataset only
-    print("\n\nMAESTRO TRAINING\n\n")
+elif (pickle_dir == "/content/MusicTransformerBeethoven/dataset/preprocessed_maestro"
+    or pickle_dir == "/content/MusicTransformerBeethoven/dataset/preprocessed_maestro_transposed"
+    or pickle_dir == "/content/MusicTransformerBeethoven/dataset/preprocessed_std_beethoven_transposed"): # pre-training datasets only
+    print("\n\nPRE-TRAINING\n\n")
     idx = 0
     #-------- Générer les ensembles de validation et de test une seule fois avant la boucle d'entraînement
     try:

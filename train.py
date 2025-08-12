@@ -60,7 +60,7 @@ print(dataset)
 
 total_steps = (len(dataset.files) // batch_size) * epochs  #nombre total d'etapes
 
-if pickle_dir=="/content/MusicTransformerBeethoven/dataset/preprocessed_midi" or pickle_dir=="/content/MusicTransformerBeethoven/dataset/preprocessed_midi_maestro":
+if pickle_dir=="/content/MusicTransformerBeethoven/dataset/preprocessed_personnalized" or pickle_dir=="/content/MusicTransformerBeethoven/dataset/preprocessed_maestro":
     warmup_steps = int(0.1 * total_steps)
 else:
     warmup_steps = int(0.05 * total_steps) #less warmup steps for fine-tuning
@@ -108,7 +108,7 @@ mt = MusicTransformerDecoder(
 try:
     # This part gets the first batch of data to explicitly build the model
     # We use a try/except block to handle cases where the dataset might be empty
-    if pickle_dir == "/content/MusicTransformerBeethoven/dataset/preprocessed_midi_maestro":
+    if pickle_dir == "/content/MusicTransformerBeethoven/dataset/preprocessed_maestro":
         sample_batch_x, _ = dataset.slide_seq2seq_batch(batch_size, max_seq, 'train_pretraining')
     else:
         sample_batch_x, _ = dataset.slide_seq2seq_batch(batch_size, max_seq, 'train_finetuning')
@@ -146,9 +146,9 @@ test_summary_writer = tf.summary.create_file_writer(test_log_dir)
 
 
 #define frequency of reports based on the dataset size
-if pickle_dir=="/content/MusicTransformerBeethoven/dataset/preprocessed_midi": #general (and big) dataset
+if pickle_dir=="/content/MusicTransformerBeethoven/dataset/preprocessed_personnalized": #general (and big) dataset
     freq = 1000
-elif (pickle_dir == "/content/MusicTransformerBeethoven/dataset/preprocessed_midi_beethoven" or
+elif (pickle_dir == "/content/MusicTransformerBeethoven/dataset/preprocessed_beethoven" or
       pickle_dir == "/content/MusicTransformerBeethoven/dataset/preprocessed_First_mov" or
       pickle_dir == "/content/MusicTransformerBeethoven/dataset/std_preprocessed_midi_Beethoven"):  # specific (and small) dataset
     freq = 100
@@ -159,7 +159,7 @@ else: #maestro dataset
 
 
 # Train Start (without maestro)
-if pickle_dir != "/content/MusicTransformerBeethoven/dataset/preprocessed_midi_maestro":
+if pickle_dir != "/content/MusicTransformerBeethoven/dataset/preprocessed_maestro":
     print("\n\nNOT MAESTRO TRAINING\n\n")
     idx = 0
     #-------- Générer les ensembles de validation et de test une seule fois avant la boucle d'entraînement

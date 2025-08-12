@@ -93,28 +93,27 @@ elif l_r_schedule=='FixedWLinearWarmup':
 opt = Adam(learning_rate, beta_1=0.9, beta_2=0.98, epsilon=1e-9)
 
 
+# --- CODE CORRIGÉ ---
+
 # define model
+# On instancie le modèle SANS le chemin de chargement
 mt = MusicTransformerDecoder(
             embedding_dim=256,
             vocab_size=par.vocab_size,
             num_layer=num_layer,
             max_seq=max_seq,
             dropout=0.2,
-            debug=False, loader_path=load_path)
-
-# --- NEW CODE START ---
+            debug=False)
 
 # Get a sample batch of data to build the model
 try:
-    # This part gets the first batch of data to explicitly build the model
-    # We use a try/except block to handle cases where the dataset might be empty
-    if pickle_dir == "/content/MusicTransformerBeethoven/dataset/preprocessed_maestro":
+    if (pickle_dir == "/content/MusicTransformerBeethoven/dataset/preprocessed_maestro" or
+        pickle_dir == "/content/MusicTransformerBeethoven/dataset/preprocessed_maestro_transposed"):
         sample_batch_x, _ = dataset.slide_seq2seq_batch(batch_size, max_seq, 'train_pretraining')
     else:
         sample_batch_x, _ = dataset.slide_seq2seq_batch(batch_size, max_seq, 'train_finetuning')
     
     # Build the model by calling it on the sample data
-    # This is the key step to fix the ValueError
     _ = mt(sample_batch_x)
     print("Model has been built with a sample batch of data.")
 
@@ -128,9 +127,9 @@ except Exception as e:
     print(f"Error during model building or weight loading: {e}")
     sys.exit() # Exit the program if there's an error here, as training cannot continue.
 
-# --- NEW CODE END ---
-
 mt.compile(optimizer=opt, loss=callback.transformer_dist_train_loss)
+
+# --- FIN DU CODE CORRIGÉ ---
 
 
 # define tensorboard writer

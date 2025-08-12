@@ -62,8 +62,8 @@ def transpose_midi_pretty(input_path, output_path, semitones):
         print(f"Error processing {input_path}: {e}")
 
 # Directory containing the original MIDI files
-input_directory = "C:\\Users\\vivo-\\Documents\\Dauphine\\StageM1\\GitHub_repo\\dataset\\personnalized"
-output_directory = "C:\\Users\\vivo-\\Documents\\Dauphine\\StageM1\\GitHub_repo\\dataset\\personnalized_transposed"
+input_directory = "C:\\Users\\vivo-\\Documents\\Dauphine\\StageM1\\GitHub_repo\\dataset\\maestro"
+output_directory = "C:\\Users\\vivo-\\Documents\\Dauphine\\StageM1\\GitHub_repo\\dataset\\maestro_transposed"
 
 # Supported MIDI file extensions
 midi_extensions = ('.mid', '.midi')

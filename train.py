@@ -155,26 +155,38 @@ elif (pickle_dir == "/content/MusicTransformerBeethoven/dataset/preprocessed_bee
 else: #maestro dataset
     freq = 1000
 
-
-def evaluate_in_batches(model, x, y, eval_batch_size):
+# Fonction pour évaluer sur l'ensemble des données sans problème de limite de GPU
+def evaluate_in_batches(model, x, y, batch_size):
     all_metrics = []
-    for i in range(0, len(x), eval_batch_size):
-        batch_x = x[i:i + eval_batch_size]
-        batch_y = y[i:i + eval_batch_size]
+    for i in range(0, len(x), batch_size):
+        batch_x = x[i:i + batch_size]
+        batch_y = y[i:i + batch_size]
 
+        # Assurez-vous que les lots ne sont pas vides
         if len(batch_x) > 0:
-            # La fonction evaluate de votre modèle retourne les métriques
-            # et éventuellement d'autres valeurs, comme des poids.
-            # On ne prend que les métriques ici.
             metrics, _ = model.evaluate(batch_x, batch_y)
             all_metrics.append(metrics)
 
+    # Calculer la moyenne des métriques
     if not all_metrics:
-        return [0.0, 0.0]  # Retourne une valeur par défaut si l'ensemble est vide
-
-    # Calculer la moyenne de chaque métrique
+        return [0.0, 0.0, 0.0]
     avg_metrics = [sum(m[i] for m in all_metrics) / len(all_metrics) for i in range(len(all_metrics[0]))]
     return avg_metrics
+
+def run_sanity_check_on_batch(model, x, y, batch_size, step):
+    """
+    Exécute la vérification de cohérence sur un petit lot de données.
+    """
+    # Sélectionnez le premier batch de l'ensemble complet de validation
+    batch_x = x[:batch_size]
+    batch_y = y[:batch_size]
+
+    # Vérifiez que le lot n'est pas vide
+    if len(batch_x) > 0:
+        model.sanity_check(batch_x, batch_y, step=step)
+    else:
+        print("Avertissement : L'ensemble de validation est vide pour le sanity check.")
+
 
 # Train Start (without maestro)
 if pickle_dir != "/content/MusicTransformerBeethoven/dataset/preprocessed_maestro":
@@ -223,7 +235,7 @@ if pickle_dir != "/content/MusicTransformerBeethoven/dataset/preprocessed_maestr
 
                 with eval_summary_writer.as_default():
                     if b == 0:
-                        mt.sanity_check(eval_x, eval_y, step=e)
+                        run_sanity_check_on_batch(mt, eval_x, eval_y, 2, step=e)
 
                     tf.summary.scalar('loss', eval_result_metrics[0], step=idx)
                     tf.summary.scalar('perplexity', eval_result_metrics[1], step=idx)
@@ -237,6 +249,9 @@ if pickle_dir != "/content/MusicTransformerBeethoven/dataset/preprocessed_maestr
 
                 # Test metrics logging
                 with test_summary_writer.as_default():
+                    if b == 0:
+                        run_sanity_check_on_batch(mt, test_x, test_y, batch_size=2, step=e)
+                        
                     tf.summary.scalar('loss', test_result_metrics[0], step=idx)
                     tf.summary.scalar('perplexity', test_result_metrics[1], step=idx)
                     tf.summary.scalar('accuracy', test_result_metrics[2], step=idx)
@@ -293,7 +308,7 @@ else: # maestro dataset only
                 # Eval metrics logging
                 with eval_summary_writer.as_default():
                     if b == 0:
-                        mt.sanity_check(eval_x, eval_y, step=e)
+                        run_sanity_check_on_batch(mt, eval_x, eval_y, 2, step=e)
 
                     tf.summary.scalar('loss', eval_result_metrics[0], step=idx)
                     tf.summary.scalar('perplexity', eval_result_metrics[1], step=idx)
@@ -304,6 +319,9 @@ else: # maestro dataset only
 
                 # Test metrics logging
                 with test_summary_writer.as_default():  # Ensure you have a test summary writer initialized like train/eval
+                    if b == 0:
+                        run_sanity_check_on_batch(mt, test_x, test_y, batch_size=2, step=e)
+                    
                     tf.summary.scalar('loss', test_result_metrics[0], step=idx)
                     tf.summary.scalar('perplexity', test_result_metrics[1], step=idx)
                     tf.summary.scalar('accuracy', test_result_metrics[2], step=idx)

@@ -111,9 +111,9 @@ def standardize_midi(tmp_csv_file_path, output_midi_path=None):
 
 if __name__ == "__main__":
     # Directories
-    midi_directory = "/home/aldo/aDauphine/MusicTransformerBeethoven/dataset/midi_Beethoven"
-    standardized_midi_directory = "/home/aldo/aDauphine/MusicTransformerBeethoven/dataset/std_midi_Beethoven"
-    standardized_csv_directory = "/home/aldo/aDauphine/MusicTransformerBeethoven/dataset/std_csv"
+    midi_directory = "C:\\Users\\vivo-\\Documents\\Dauphine\\StageM1\\GitHub_repo\\dataset\\personnalized_transposed"
+    standardized_midi_directory = "C:\\Users\\vivo-\\Documents\\Dauphine\\StageM1\\GitHub_repo\\dataset\\std_personnalized_transposed"
+    standardized_csv_directory = "C:\\Users\\vivo-\\Documents\\Dauphine\\StageM1\\csv_std_personnalized_transposed"
 
     # Create output directories if they do not exist
     os.makedirs(standardized_midi_directory, exist_ok=True)

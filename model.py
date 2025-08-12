@@ -368,8 +368,8 @@ class MusicTransformerDecoder(keras.Model):
 
         self._set_metrics()
 
-        # if loader_path is not None:
-        #     self.load_ckpt_file(loader_path)
+        if loader_path is not None:
+            self.load_ckpt_file(loader_path)
 
     def call(self, inputs, training=None, eval=None, lookup_mask=None):
         decoder, w = self.Decoder(inputs, training=training, mask=lookup_mask)

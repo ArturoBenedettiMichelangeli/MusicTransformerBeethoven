@@ -156,11 +156,11 @@ else: #maestro dataset
     freq = 1000
 
 # Fonction pour évaluer sur l'ensemble des données sans problème de limite de GPU
-def evaluate_in_batches(model, x, y, batch_size):
+def evaluate_in_batches(model, x, y, eval_batch_size):
     all_metrics = []
-    for i in range(0, len(x), batch_size):
-        batch_x = x[i:i + batch_size]
-        batch_y = y[i:i + batch_size]
+    for i in range(0, len(x), eval_batch_size):
+        batch_x = x[i:i + eval_batch_size]
+        batch_y = y[i:i + eval_batch_size]
 
         # Assurez-vous que les lots ne sont pas vides
         if len(batch_x) > 0:
@@ -218,7 +218,7 @@ if pickle_dir != "/content/MusicTransformerBeethoven/dataset/preprocessed_maestr
             if b % freq == 0:
                 if eval_x is not None:
                   #eval_result_metrics, weights = mt.evaluate(eval_x, eval_y, sample_weight=eval_sample_weights)
-                  eval_result_metrics = evaluate_in_batches(mt, eval_x, eval_y, 2)
+                  eval_result_metrics = evaluate_in_batches(mt, eval_x, eval_y, eval_batch_size=8)
                 else:
                   eval_result_metrics = [0,0,0] # Mettre des valeurs par défaut si l'ensemble n'a pas pu être créé
 
@@ -235,7 +235,7 @@ if pickle_dir != "/content/MusicTransformerBeethoven/dataset/preprocessed_maestr
 
                 with eval_summary_writer.as_default():
                     if b == 0:
-                        run_sanity_check_on_batch(mt, eval_x, eval_y, 2, step=e)
+                        run_sanity_check_on_batch(mt, eval_x, eval_y, batch_size=8, step=e)
 
                     tf.summary.scalar('loss', eval_result_metrics[0], step=idx)
                     tf.summary.scalar('perplexity', eval_result_metrics[1], step=idx)
@@ -243,7 +243,7 @@ if pickle_dir != "/content/MusicTransformerBeethoven/dataset/preprocessed_maestr
                 
                 # Test set evaluation
                 if test_x is not None:
-                    test_result_metrics = evaluate_in_batches(mt, test_x, test_y, 2)
+                    test_result_metrics = evaluate_in_batches(mt, test_x, test_y, eval_batch_size=2)
                 else:
                     test_result_metrics = [0,0,0]
 
@@ -290,7 +290,7 @@ else: # maestro dataset only
             if b % freq == 0:
                 # Evaluation on eval set
                 
-                eval_result_metrics = evaluate_in_batches(mt, eval_x, eval_y, 2)
+                eval_result_metrics = evaluate_in_batches(mt, eval_x, eval_y, eval_batch_size=2)
 
                 # Save model
                 mt.save(save_path)
@@ -308,14 +308,14 @@ else: # maestro dataset only
                 # Eval metrics logging
                 with eval_summary_writer.as_default():
                     if b == 0:
-                        run_sanity_check_on_batch(mt, eval_x, eval_y, 2, step=e)
+                        run_sanity_check_on_batch(mt, eval_x, eval_y, batch_size=8, step=e)
 
                     tf.summary.scalar('loss', eval_result_metrics[0], step=idx)
                     tf.summary.scalar('perplexity', eval_result_metrics[1], step=idx)
                     tf.summary.scalar('accuracy', eval_result_metrics[2], step=idx)
 
                 # Test set evaluation
-                test_result_metrics = evaluate_in_batches(mt, test_x, test_y, 2)
+                test_result_metrics = evaluate_in_batches(mt, test_x, test_y, eval_batch_size=8)
 
                 # Test metrics logging
                 with test_summary_writer.as_default():  # Ensure you have a test summary writer initialized like train/eval

@@ -53,7 +53,7 @@ if mode == 'pretraining':
     dataset = Data(dir_path=args.pickle_dir, mode='pretraining')
 elif mode == 'finetuning':
     dataset = Data(finetuning_dir=args.pickle_dir, mode=mode)
-print(dataset)
+print(dataset.__repr__(mode))
 
 
 # load model

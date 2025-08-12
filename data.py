@@ -82,8 +82,11 @@ class Data:
         else:
             raise ValueError("Le mode doit être 'pretraining' ou 'finetuning'.")
         
-    def __repr__(self):
-        return '<class Data has "'+str(len(self.files))+'" files>'
+    def __repr__(self, mode):
+        if mode=='pretraining':
+          return '<class Data has "'+str(len(self.general_files))+'" files>'
+        else:
+          return '<class Data has "'+str(len(self.finetuning_files))+'" files>'
 
     def weights_init(self, dir_path):
         if dir_path == "/content/MusicTransformerBeethoven/dataset/preprocessed_midi":

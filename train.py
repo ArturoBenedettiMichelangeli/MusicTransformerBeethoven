@@ -121,7 +121,7 @@ mt = MusicTransformerDecoderWrapper(
 
 # Construire le modèle de manière explicite (le Wrapper va construire le vrai modèle)
 mt.build(input_shape=(None, config['max_seq']))
-print("Model Wrapper has been explicitly built using config parameters.")
+print("\nModel Wrapper has been explicitly built using config parameters.")
 
 
 # Maintenant, on peut charger les poids

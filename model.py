@@ -744,30 +744,45 @@ class MusicTransformerDecoder(keras.Model):
 class MusicTransformerDecoderWrapper(keras.Model):
     def __init__(self, **kwargs):
         super(MusicTransformerDecoderWrapper, self).__init__()
-        # On stocke les arguments pour les passer au modèle
         self.config_params = kwargs
+        # The model is not created here yet
         self.model = None
 
     def build(self, input_shape=None):
-        # On construit la classe d'origine ici, en utilisant les paramètres
+        # 1. Créez le modèle d'origine
         self.model = MusicTransformerDecoder(**self.config_params)
         
-        # Le code d'origine construit le modèle dans son __init__, donc c'est fait.
-        # On peut appeler 'super().build()' pour que Keras le reconnaisse
+        # 2. Appelez le modèle avec une entrée factice pour forcer sa construction
+        if input_shape is not None:
+            # Utilisez une taille de lot concrète (par exemple, 1) pour le dummy_input
+            # et la max_seq de votre configuration
+            dummy_input = tf.zeros((1, self.config_params['max_seq']), dtype=tf.int32)
+            _ = self.model(dummy_input)
+
+        # 3. Enfin, appelez la méthode build du parent
         super(MusicTransformerDecoderWrapper, self).build(input_shape=input_shape)
 
     def call(self, inputs, training=False, lookup_mask=None, eval=False):
-        # On transmet l'appel au modèle d'origine
         if self.model is None:
-            raise RuntimeError("Le modèle n'est pas encore construit. Appelez build() d'abord.")
+            raise RuntimeError("The model is not yet built. Call build() first.")
         return self.model(inputs, training=training, lookup_mask=lookup_mask, eval=eval)
 
-    # Vous pouvez aussi ajouter d'autres méthodes comme save/load/compile
-    # pour passer l'appel au modèle d'origine
-    def load_weights(self, filepath, by_name=False, skip_mismatch=False, options=None):
+    def load_weights(self, filepath, **kwargs):
         if self.model is None:
-            raise RuntimeError("Le modèle n'est pas construit. Impossible de charger les poids.")
-        self.model.load_ckpt_file(filepath) # Utilisation de la méthode load_ckpt_file du modèle d'origine
+            raise RuntimeError("The model is not built. Cannot load weights.")
+        self.model.load_ckpt_file(filepath)
+    
+    def save(self, filepath, **kwargs):
+        if self.model is None:
+            self.build()
+        # On appelle la méthode save du modèle d'origine
+        self.model.save(filepath, **kwargs)
+    
+    def sanity_check(self, *args, **kwargs):
+        if self.model is None:
+            self.build()
+        # This line passes the call to the original model's method
+        return self.model.sanity_check(*args, **kwargs)
 
     # N'oubliez pas d'inclure d'autres méthodes si nécessaire
     def compile(self, optimizer, loss, **kwargs):

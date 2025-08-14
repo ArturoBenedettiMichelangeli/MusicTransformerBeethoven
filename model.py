@@ -351,25 +351,43 @@ class MusicTransformerDecoder(keras.Model):
                  max_seq=2048, dropout=0.2, debug=False, loader_path=None, dist=False):
         super(MusicTransformerDecoder, self).__init__()
 
-        if loader_path is not None:
-            self.load_config_file(loader_path)
-        else:
-            self._debug = debug
-            self.max_seq = max_seq
-            self.num_layer = num_layer
-            self.embedding_dim = embedding_dim
-            self.vocab_size = vocab_size
-            self.dist = dist
+        # if loader_path is not None:
+        #     self.load_config_file(loader_path)
+        # else:
+        self._debug = debug
+        self.max_seq = max_seq
+        self.num_layer = num_layer
+        self.embedding_dim = embedding_dim
+        self.vocab_size = vocab_size
+        self.dist = dist
 
-        self.Decoder = Encoder(
-            num_layers=self.num_layer, d_model=self.embedding_dim,
-            input_vocab_size=self.vocab_size, rate=dropout, max_len=max_seq)
-        self.fc = keras.layers.Dense(self.vocab_size, activation=None, name='output')
+        # self.Decoder = Encoder(
+        #     num_layers=self.num_layer, d_model=self.embedding_dim,
+        #     input_vocab_size=self.vocab_size, rate=dropout, max_len=max_seq)
+        # self.fc = keras.layers.Dense(self.vocab_size, activation=None, name='output')
+        self.Decoder = None
+        self.fc = None
 
         self._set_metrics()
 
-        if loader_path is not None:
-            self.load_ckpt_file(loader_path)
+        # if loader_path is not None:
+        #     self.load_ckpt_file(loader_path)
+
+    # --- NOUVELLE MÉTHODE ---
+    def build(self, input_shape=None):
+        # Cette méthode construit explicitement le modèle
+        # Elle prend en paramètre un `input_shape` optionnel, utile pour la démo
+        
+        # On instancie les couches ici
+        self.Decoder = Encoder(
+            num_layers=self.num_layer, d_model=self.embedding_dim,
+            input_vocab_size=self.vocab_size, rate=0.2, max_len=self.max_seq
+        )
+        self.fc = keras.layers.Dense(self.vocab_size, activation=None, name='output')
+
+        # Il est important d'appeler la méthode build du parent pour que Keras le reconnaisse comme construit
+        super(MusicTransformerDecoder, self).build(input_shape=input_shape)
+
 
     def call(self, inputs, training=None, eval=None, lookup_mask=None):
         decoder, w = self.Decoder(inputs, training=training, mask=lookup_mask)
@@ -722,6 +740,50 @@ class MusicTransformerDecoder(keras.Model):
         # x = data.add_noise(x, rate=0.01)
         return x, y
 
+
+class MusicTransformerDecoderWrapper(keras.Model):
+    def __init__(self, **kwargs):
+        super(MusicTransformerDecoderWrapper, self).__init__()
+        # On stocke les arguments pour les passer au modèle
+        self.config_params = kwargs
+        self.model = None
+
+    def build(self, input_shape=None):
+        # On construit la classe d'origine ici, en utilisant les paramètres
+        self.model = MusicTransformerDecoder(**self.config_params)
+        
+        # Le code d'origine construit le modèle dans son __init__, donc c'est fait.
+        # On peut appeler 'super().build()' pour que Keras le reconnaisse
+        super(MusicTransformerDecoderWrapper, self).build(input_shape=input_shape)
+
+    def call(self, inputs, training=False, lookup_mask=None, eval=False):
+        # On transmet l'appel au modèle d'origine
+        if self.model is None:
+            raise RuntimeError("Le modèle n'est pas encore construit. Appelez build() d'abord.")
+        return self.model(inputs, training=training, lookup_mask=lookup_mask, eval=eval)
+
+    # Vous pouvez aussi ajouter d'autres méthodes comme save/load/compile
+    # pour passer l'appel au modèle d'origine
+    def load_weights(self, filepath, by_name=False, skip_mismatch=False, options=None):
+        if self.model is None:
+            raise RuntimeError("Le modèle n'est pas construit. Impossible de charger les poids.")
+        self.model.load_ckpt_file(filepath) # Utilisation de la méthode load_ckpt_file du modèle d'origine
+
+    # N'oubliez pas d'inclure d'autres méthodes si nécessaire
+    def compile(self, optimizer, loss, **kwargs):
+        if self.model is None:
+             self.build() # On s'assure que le modèle est construit si on l'appelle directement
+        self.model.compile(optimizer=optimizer, loss=loss, **kwargs)
+        
+    def train_on_batch(self, *args, **kwargs):
+        if self.model is None:
+             self.build()
+        return self.model.train_on_batch(*args, **kwargs)
+
+    def evaluate(self, *args, **kwargs):
+        if self.model is None:
+             self.build()
+        return self.model.evaluate(*args, **kwargs)
 
 if __name__ == '__main__':
     # import utils

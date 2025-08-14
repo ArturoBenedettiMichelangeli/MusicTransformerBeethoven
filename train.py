@@ -1,4 +1,4 @@
-from model import MusicTransformerDecoder
+from model import MusicTransformerDecoderWrapper
 from custom.layers import *
 from custom import callback
 import params as par
@@ -9,6 +9,8 @@ import argparse
 import datetime
 import sys
 import tensorflow as tf
+import json
+
 
 tf.executing_eagerly()
 
@@ -27,6 +29,7 @@ parser.add_argument('--is_reuse', default=False)
 parser.add_argument('--multi_gpu', default=True)
 parser.add_argument('--num_layers', default=6, type=int)
 parser.add_argument('--mode', default='pretraining', type=str, choices=['pretraining', 'finetuning'], help="Spécifie la phase d'entraînement.")
+parser.add_argument('--config_path', default=None)
 
 
 args = parser.parse_args()
@@ -45,6 +48,8 @@ save_path = args.save_path
 multi_gpu = args.multi_gpu
 num_layer = args.num_layers
 mode = args.mode
+config_path = args.config_path
+
 
 
 
@@ -98,49 +103,38 @@ elif l_r_schedule=='FixedWLinearWarmup':
 
 opt = Adam(learning_rate, beta_1=0.9, beta_2=0.98, epsilon=1e-9)
 
+# --- NOUVEAU CODE ---
 
-# --- CODE CORRIGÉ ---
+# Load the configuration file
+with open(config_path, 'r') as f:
+    config = json.load(f)
 
-# define model
-# On instancie le modèle SANS le chemin de chargement
-mt = MusicTransformerDecoder(
-            embedding_dim=256,
-            vocab_size=par.vocab_size,
-            num_layer=num_layer,
-            max_seq=max_seq,
-            dropout=0.2,
-            debug=False)
+# Créez une instance du Wrapper au lieu du modèle d'origine
+mt = MusicTransformerDecoderWrapper(
+    embedding_dim=config['embedding_dim'],
+    vocab_size=config['vocab_size'],
+    num_layer=config['num_layer'],
+    max_seq=config['max_seq'],
+    dropout=0.2,
+    debug=False
+)
 
-# Get a sample batch of data to build the model
-try:
-    if (
-      pickle_dir == "/content/MusicTransformerBeethoven/dataset/preprocessed_maestro"
-      or pickle_dir == "/content/MusicTransformerBeethoven/dataset/preprocessed_maestro_transposed"
-      or pickle_dir == "/content/MusicTransformerBeethoven/dataset/preprocessed_std_personnalized"
-      or pickle_dir == "/content/MusicTransformerBeethoven/dataset/preprocessed_std_personnalized_transposed" # pre-training datasets only
-    ):
-        sample_batch_x, _ = dataset.slide_seq2seq_batch(batch_size, max_seq, 'train_pretraining')
-    else:
-        sample_batch_x, _ = dataset.slide_seq2seq_batch(batch_size, max_seq, 'train_finetuning')
-    
-    # Build the model by calling it on the sample data
-    _ = mt(sample_batch_x)
-    print("Model has been built with a sample batch of data.")
+# Construire le modèle de manière explicite (le Wrapper va construire le vrai modèle)
+mt.build(input_shape=(None, config['max_seq']))
+print("Model Wrapper has been explicitly built using config parameters.")
 
-    # Now that the model is built, we can safely load the weights if a path is provided
-    if load_path:
-        # Load the weights from the specified checkpoint path
-        mt.load_ckpt_file(load_path)
+
+# Maintenant, on peut charger les poids
+if load_path:
+    try:
+        mt.load_weights(load_path)
         print(f"Weights loaded successfully from {load_path}")
-    
-except Exception as e:
-    print(f"Error during model building or weight loading: {e}")
-    sys.exit() # Exit the program if there's an error here, as training cannot continue.
+    except Exception as e:
+        print(f"Error during weight loading: {e}")
+        sys.exit()
 
+# Compile le modèle (le Wrapper va le passer au modèle d'origine)
 mt.compile(optimizer=opt, loss=callback.transformer_dist_train_loss)
-
-# --- FIN DU CODE CORRIGÉ ---
-
 
 
 # define tensorboard writer

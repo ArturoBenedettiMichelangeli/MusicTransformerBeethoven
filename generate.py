@@ -1,4 +1,4 @@
-from model import MusicTransformer, MusicTransformerDecoder
+from model import MusicTransformer, MusicTransformerDecoderWrapper
 from custom.layers import *
 from custom import callback
 import params as par
@@ -21,6 +21,7 @@ parser.add_argument('--beam', default=None, type=int)
 parser.add_argument('--length', default=2048, type=int)
 parser.add_argument('--save_path', default='/content/generated.mid', type=str)
 parser.add_argument('--pickle_dir', default='/content/MusicTransformerBeethoven/dataset/preprocessed_std_beethoven_transposed', help='Chemin du répertoire pickle', type=str)
+parser.add_argument('--config_path', default=None)
 
 
 args = parser.parse_args()
@@ -33,6 +34,14 @@ beam = args.beam
 length = args.length
 save_path = args.save_path
 pickle_dir = args.pickle_dir
+config_path= args.config_path
+
+
+# Chargez le fichier de configuration correspondant aux poids
+import json
+config_path = f"{args.load_path}/config.json"
+with open(config_path, 'r') as f:
+    config = json.load(f)
 
 current_time = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
 gen_log_dir = 'logs/mt_decoder/generate_'+current_time+'/generate'
@@ -42,33 +51,42 @@ gen_summary_writer = tf.summary.create_file_writer(gen_log_dir)
 
 try:
     if mode == 'enc-dec':
+    # ... (laissez ce bloc si vous n'avez pas de Wrapper pour MusicTransformer) ...
         print(">> generate with original seq2seq wise... beam size is {}".format(beam))
         mt = MusicTransformer(
-                embedding_dim=256,
-                vocab_size=par.vocab_size,
-                num_layer=6,
-                max_seq=2048,
-                dropout=0.4,
-                debug=False)
-    
+            embedding_dim=256,
+            vocab_size=par.vocab_size,
+            num_layer=6,
+            max_seq=2048,
+            dropout=0.2,
+            debug=False)
     else:
         print(">> generate with decoder wise... beam size is {}".format(beam))
-        mt = MusicTransformerDecoder()
+    
+        # Instanciez le Wrapper en utilisant les paramètres du config.json
+        mt = MusicTransformerDecoderWrapper(
+            embedding_dim=config['embedding_dim'],
+            vocab_size=config['vocab_size'],
+            num_layer=config['num_layer'],
+            max_seq=config['max_seq'],
+            dropout=0.2,
+            debug=False
+        )
 
-    # Build the model by calling the build() method with the correct input shape
-    mt.build(input_shape=(None, par.max_seq))
+  # Construire le modèle de manière explicite (le Wrapper le gère)
+    mt.build(input_shape=(None, config['max_seq']))
     print("Model has been built with the input shape.")
 
-    # Now that the model is built, we can safely load the weights
+  # Maintenant que le modèle est construit, nous pouvons charger les poids
     if load_path:
-        mt.load_ckpt_file(load_path)
+        mt.load_weights(load_path)
         print(f"Weights loaded successfully from {load_path}")
-    
+  
 except Exception as e:
-    print(f"Error during model building or weight loading: {e}")
-    sys.exit()
+  print(f"Error during model building or weight loading: {e}")
+  sys.exit()
 
-# Compile the model
+# Compile le modèle (le Wrapper passera l'appel)
 mt.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=par.l_r))
 
 # --- FIN DU CODE CORRIGÉ ---

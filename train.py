@@ -60,13 +60,19 @@ print(dataset.__repr__(mode))
 
 total_steps = (len(dataset.files) // batch_size) * epochs  #nombre total d'etapes
 
-if pickle_dir=="/content/MusicTransformerBeethoven/dataset/preprocessed_personnalized" or pickle_dir=="/content/MusicTransformerBeethoven/dataset/preprocessed_maestro":
+# Warmup-steps : 10% pour pre-training, 5% pour fine-tuning
+if(
+    pickle_dir=="/content/MusicTransformerBeethoven/dataset/preprocessed_std_personnalized_transposed" 
+    or pickle_dir=="/content/MusicTransformerBeethoven/dataset/preprocessed_maestro_transposed"
+    or pickle_dir=="/content/MusicTransformerBeethoven/dataset/preprocessed_std_personnalized"
+    or pickle_dir=="/content/MusicTransformerBeethoven/dataset/preprocessed_maestro"
+):
     warmup_steps = int(0.1 * total_steps)
 else:
-    warmup_steps = int(0.05 * total_steps) #less warmup steps for fine-tuning
+    warmup_steps = int(0.05 * total_steps)
 
 decay_steps = total_steps - warmup_steps  # etapes de decroissance apres warmup dans la stratégie du Cosine Annealing
-alpha = 0.1 #fraction de initial_learning_rate qui represente le taux d'apprentissage minimum a la fin de la decroissance. Par exemple, si alpha=0.1 et initial_learning_rate=0.01, le taux d'apprentissage final sera 0.001.
+alpha = 0.01 #fraction de initial_learning_rate qui represente le taux d'apprentissage minimum a la fin de la decroissance. Par exemple, si alpha=0.1 et initial_learning_rate=0.01, le taux d'apprentissage final sera 0.001.
 #a modifier en fonction des resultats
 
 # Load model

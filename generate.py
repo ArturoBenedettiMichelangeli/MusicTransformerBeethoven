@@ -3,14 +3,11 @@ from custom.layers import *
 from custom import callback
 import params as par
 from tensorflow.keras.optimizers import Adam
-from data import Data
-import utils
 import datetime
 import argparse
 from processor import decode_midi, encode_midi
 import tensorflow as tf
 import sys
-import os
 
 parser = argparse.ArgumentParser()
 
@@ -20,7 +17,6 @@ parser.add_argument('--mode', default='dec')
 parser.add_argument('--beam', default=None, type=int)
 parser.add_argument('--length', default=2048, type=int)
 parser.add_argument('--save_path', default='/content/generated.mid', type=str)
-parser.add_argument('--pickle_dir', default='/content/MusicTransformerBeethoven/dataset/preprocessed_std_beethoven_transposed', help='Chemin du répertoire pickle', type=str)
 parser.add_argument('--config_path', default=None)
 
 
@@ -33,7 +29,6 @@ mode = args.mode
 beam = args.beam
 length = args.length
 save_path = args.save_path
-pickle_dir = args.pickle_dir
 config_path= args.config_path
 
 
